@@ -1,20 +1,41 @@
 #!/bin/bash
-# lux, a Linux Kernel updater
-# Usage: lux [-vq] [directory]
+# lux, a Linux kernel updater - version 0.2
+# Usage: lux [-dhiquv] [directory]
 # Update a kernel source tree located in [directory] to the latest version, and
 # then configure and install it.
 #
 # If unspecified, [directory] is the current working directory.
 # 
 # Options:
-#      -q                       non-interactive; uses defaults for any questions
-#      -v                       be verbose
-# 
+#      -u                       only update the kernel source; don't install
+#      -i                       only install the kernel source; don't update
+#
+#      -q                       non-interactive; use defaults for all questions
+#      -d                       debug mode, be verbose
+#
+#      -h                       show help
+#      -v                       show version
+#
 # End of help.
+# Copyright (c) 2014, Kylie McClain <somasissounds@gmail.com>
+#
+# Permission to use, copy, modify, and/or distribute this software for any
+# purpose with or without fee is hereby granted, provided that the above
+# copyright notice and this permission notice appear in all copies.
+# 
+# THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
+# REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+# AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
+# INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+# LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
+# OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+# PERFORMANCE OF THIS SOFTWARE.
+#
+# End of copyright.
 #
 
 # Optimize for multi-core, use a thread for each core
-MAKEOPTS="-j$(grep ^processor /proc/cpuinfo | wc -l)"
+MAKEOPTS="-j$(getconf _NPROCESSORS_ONLN)"
 
 branch=stable
 kernel_repo="https://git.kernel.org/pub/scm/linux/kernel/git/${branch}/linux-${branch}.git"
@@ -28,7 +49,6 @@ kernel_configure() {
 }
 
 kernel_compile() {
-    echo '`make`'
     err=kernel_compilation_failed make
 }
 
@@ -44,7 +64,6 @@ kernel_install() {
         ;;
     esac
     
-    echo '`make modules_install`'
     err=kernel_modules_install_failed make modules_install
     echo "\`cp -Lv \"arch/${arch}/boot/bzImage\" "/boot/kernel"\`"
     cp -Lv "arch/${arch}/boot/bzImage" "/boot/kernel" || \
@@ -61,9 +80,12 @@ err_good=0
 err_invalid_arg=1
 err_invalid_dir=2
 err_git=3
+err_no_git_repo=4
 err_unable_to_make_dir=5
 err_not_gonna_update=10
+err_only_one_action=31
 err_only_one_output_level=32
+err_not_a_kernel_repo=63
 err_kernel_configuration_failed=64
 err_kernel_compilation_failed=65
 err_kernel_modules_install_failed=66
@@ -75,7 +97,7 @@ running_kernel_version=$(uname -r | cut -d'-' -f1)
 debug() {
     if [[ "$verbose" ]];then
         if [[ ! -z "$@" ]];then
-            printf '%s\n' "$@" >&2
+            printf '%s: %s\n' "$me" "$@" >&2
         else
             return 0
         fi
@@ -103,9 +125,28 @@ help() {
     exit 0
 }
 
+version() {
+    sed 's/^# //;s/, .*-//;s/version //;2q;$!d' "$0"
+    copyright
+    exit 0
+}
+
+copyright() {
+    sed -n '/^#/!d;s/^# //;s/^#//;/End of help./,${p;}' "$0" | \
+    while IFS= read copyright_line;do
+        if [[ "$copyright_line" == "End of help." ]];then
+            true
+        elif [[ "$copyright_line" == "End of copyright." ]];then
+            break
+        else
+            printf '%s\n' "$copyright_line"
+        fi
+    done
+}
+
 error() {
-    error_code=$(eval echo "\$err_$@")
-    debug "Exiting due to $@ (error code: $error_code)"
+    local error_code=$(eval echo "\$err_$@")
+    debug "Exiting due to \"$@\" (error code: $error_code)"
     exit $error_code
 }
 
@@ -119,22 +160,36 @@ realpath() {
 }
 
 git() {
-    debug "\`git $*\`"
-    command -- git $* || { echo "git exited with error code $?"; error git; }
+    debug "executing \`git $*\`"
+    command -- git $* || { debug "git exited with error code $?"; error git; }
 }
 
 quiet_git() {
     local args="$@"
     [[ -z "$quiet" ]] && git "$args" && return $?
     case "$1" in
-        checkout|pull)
+        checkout|fetch)
             args="$args -q"
         ;;
+        pull)
+            args="$args -q >/dev/null 2>&1"
+        ;;
     esac
-    git "$args"
+    eval git "$args"
+}
+
+is_actually_kernel_repo() {
+    # sanity checks to make sure this is actually a kernel git repo
+    # kernel Makefile always has VERSION as first line
+    if [[ -f Makefile ]] && head -1 Makefile | grep -q '^VERSION';then
+        return 0
+    else
+        return 1
+    fi
 }
 
 make() {
+    debug "executing \`make $MAKEOPTS $@\`"
     command make $MAKEOPTS "$@" || error "$err"
 }
 
@@ -183,38 +238,71 @@ clean_up() {
     error ctrl_c
 }
 
-while getopts ":hvqo" argument; do
-    case "$argument" in
-        h)
-            help
-        ;;
-        v)
-            [[ "$quiet" ]] && error only_one_output_level
-            verbose=true
-        ;;
-        q)
-            [[ "$verbose" ]] && error only_one_output_level
-            quiet=true
-        ;;
-        o)
-            overwrite=true
-        ;;
-        # TODO: implement multi-branch support (longterm, next, etc)
-        # b)
-        #     branch="$OPTARG"
-        #     shift
-        # ;;
-        *)
-            invalid_arg "$OPTARG"
-        ;;
-    esac
+
+while [[ $# -ne 0 ]];do
+    arg="$1"
+    if [[ -d "$arg" ]];then
+        directory="$arg"
+    fi
+    arg="$1"
     shift
+    
+    while getopts ":dhiquv" argument "$arg"; do
+        case "$argument" in
+            d)
+                verbose=true
+                [[ "$quiet" ]] && { 
+                    printf "Either -q or -d, not both please.\n"
+                    error only_one_action
+                }
+            ;;
+            q)
+                quiet=true
+                [[ "$verbose" ]] && { 
+                    printf "Either -q or -d, not both please.\n"
+                    error only_one_action
+                }
+            ;;
+            i)
+                only_install=true
+                [[ "$only_update" ]] && { 
+                    printf "Either -u or -i, not both please.\n"
+                    error only_one_action
+                }
+            ;;
+            u)
+                only_update=true
+                [[ "$only_install" ]] && { 
+                    printf "Either -u or -i, not both please.\n"
+                    error only_one_action
+                }
+            ;;
+            h)
+                help
+            ;;
+            v)
+                version
+            ;;
+            # o)
+            #     overwrite=true
+            # ;;
+            # TODO: implement multi-branch support (longterm, next, etc)
+            # b)
+            #     branch="$OPTARG"
+            #     shift
+            # ;;
+            *)
+                invalid_arg "$OPTARG"
+            ;;
+        esac
+    done
+    
 done
 
 trap 'clean_up' 2 3 15
 
-if [[ "$#" -ne 0 ]];then
-    directory="$1"
+if [[ ! -d "$directory" ]];then
+    error invalid_dir
 fi
 
 directory=$(realpath "$directory")
@@ -226,7 +314,7 @@ debug "Branch: \"$branch\""
 
 debug "Changing to \"$directory\""
 if [[ -d "$directory" ]];then
-    cd "$directory" || error invalid_dir
+    cd "$directory"
 fi
 
 # backup kernel configuration, if there is one
@@ -234,9 +322,8 @@ method=menuconfig
 
 if [[ -f .config ]];then
     debug && printf "Creating .config backup..."
-    tmp_config_file=$(mktemp "$tmp_dir/.lux-$$-configXXXXXX") && debug && \
-        printf "$tmp_config_file" && printf '\n'
-    cat ".config" > "$tmp_config_file"
+    tmp_config_file=$(mktemp "$tmp_dir/.lux-$$-configXXXXXX")
+    cat ".config" > "$tmp_config_file" && debug && printf " $tmp_config_file\n"
     has_existing_configuration=true
     debug "You have an existing kernel config, so we'll use \`silentoldconfig\`"
     method=silentoldconfig
@@ -245,17 +332,38 @@ fi
 
 # decide if we want to clone, or reset an existing repo
 if [[ ! -d ".git" ]];then
-    ask "There doesn't appear to be a git repository here. Make a new one?" && \
-    git clone "$kernel_repo" "$directory"
+    if ask "There doesn't appear to be a git repository here. Make a new one?"; then
+        git clone "$kernel_repo" "$directory"
+    else
+        error no_git_repo
+    fi
 fi
 
-# checking for updates
-quiet_git reset --hard origin/master
-quiet_git pull -f $(debug && echo -v)
-quiet_git fetch -p
+is_actually_kernel_repo || { printf "This is not a kernel source tree.\n" &&
+error not_a_kernel_repo; }
+
+
+if [[ -z "$only_install" ]];then
+    debug "Updating kernel source tree."
+    
+    # checking for updates
+    quiet_git reset --hard origin/master
+    quiet_git pull -f $(debug && echo -v)
+    quiet_git fetch -p
+
+    latest_version=$(git describe --tags $(git rev-list --tags --max-count=1))
+    printf "Latest version available: %s\n" "$latest_version"
+fi
+
+debug "only_install is set"
+
+if [[ "$only_update" ]];then
+    debug "Not installing, since you used -u."
+    exit 0
+fi
 
 latest_version=$(git describe --tags $(git rev-list --tags --max-count=1))
-printf "Latest version available: %s\n" "$latest_version"
+debug "Installing kernel source tree."
 
 # check if repository version is same as running
 if [[ "v$running_kernel_version" == "$latest_version" ]];then
