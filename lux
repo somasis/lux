@@ -1,0 +1,285 @@
+#!/bin/bash
+# lux, a Linux Kernel updater
+# Usage: lux [-vq] [directory]
+# Update a kernel source tree located in [directory] to the latest version, and
+# then configure and install it.
+#
+# If unspecified, [directory] is the current working directory.
+# 
+# Options:
+#      -q                       non-interactive; uses defaults for any questions
+#      -v                       be verbose
+# 
+# End of help.
+#
+
+# Optimize for multi-core, use a thread for each core
+MAKEOPTS="-j$(grep ^processor /proc/cpuinfo | wc -l)"
+
+branch=stable
+kernel_repo="https://git.kernel.org/pub/scm/linux/kernel/git/${branch}/linux-${branch}.git"
+
+directory="$PWD"
+tmp_dir="/tmp"
+
+kernel_configure() {
+    # look at the .config backup logic to see how $method is determined
+    err=kernel_configuration_failed make $method
+}
+
+kernel_compile() {
+    echo '`make`'
+    err=kernel_compilation_failed make
+}
+
+# TODO: do kernel installation in a more intelligent way?
+kernel_install() {
+    arch=$(uname -m)
+    case "$arch" in
+        i686)
+            arch=x86
+        ;;
+        x86_64)
+            arch=x86
+        ;;
+    esac
+    
+    echo '`make modules_install`'
+    err=kernel_modules_install_failed make modules_install
+    echo "\`cp -Lv \"arch/${arch}/boot/bzImage\" "/boot/kernel"\`"
+    cp -Lv "arch/${arch}/boot/bzImage" "/boot/kernel" || \
+        error kernel_failed_to_install
+}
+
+# you should not need to edit anything past here
+
+set -o pipefail
+
+me="${0##*/}"
+
+err_good=0
+err_invalid_arg=1
+err_invalid_dir=2
+err_git=3
+err_unable_to_make_dir=5
+err_not_gonna_update=10
+err_only_one_output_level=32
+err_kernel_configuration_failed=64
+err_kernel_compilation_failed=65
+err_kernel_modules_install_failed=66
+err_kernel_failed_to_install=67
+err_ctrl_c=127
+
+running_kernel_version=$(uname -r | cut -d'-' -f1)
+
+debug() {
+    if [[ "$verbose" ]];then
+        if [[ ! -z "$@" ]];then
+            printf '%s\n' "$@" >&2
+        else
+            return 0
+        fi
+    else
+        return 1        
+    fi
+}
+
+quiet() {
+    if [[ "$quiet" ]];then
+        return 0
+    else
+        return 1
+    fi
+}
+
+help() {
+    sed -n '/^#/!d;s/^# //;s/^#//;3,${p;}' "$0" | while IFS= read help_line;do
+        if [[ "$help_line" == "End of help." ]];then
+            exit 0
+        else
+            printf '%s\n' "$help_line"
+        fi
+    done
+    exit 0
+}
+
+error() {
+    error_code=$(eval echo "\$err_$@")
+    debug "Exiting due to $@ (error code: $error_code)"
+    exit $error_code
+}
+
+invalid_arg() {
+    printf "$me: invalid option -- '$@'\n"
+    error invalid_arg
+}
+
+realpath() {
+    printf '%s\n' "$(cd $(dirname $1); pwd)/$(basename $1)"
+}
+
+git() {
+    debug "\`git $*\`"
+    command -- git $* || { echo "git exited with error code $?"; error git; }
+}
+
+quiet_git() {
+    local args="$@"
+    [[ -z "$quiet" ]] && git "$args" && return $?
+    case "$1" in
+        checkout|pull)
+            args="$args -q"
+        ;;
+    esac
+    git "$args"
+}
+
+make() {
+    command make $MAKEOPTS "$@" || error "$err"
+}
+
+
+ask() {
+    local ask_text="$1"
+    if [[ "$2" != "y" ]];then
+        local default='y'
+        local default_text="Y/n"
+    else
+        local default='n'
+        local default_text="y/N"
+    fi
+    
+    if [[ "$quiet" ]];then
+        ask_reply="$default"
+    else
+        printf "%s [%s] " "$ask_text" "$default_text"
+        read -n1 ask_reply; printf '\n'
+    fi
+    
+    ask_reply=$(echo "$ask_reply" | tr 'A-Z' 'a-z')
+    
+    if [[ -z "$ask_reply" ]];then
+        ask_reply="$default"
+    fi
+    
+    if [[ "$ask_reply" == "y" && "$default" == "y" ]];then
+        return 0
+    elif [[ "$ask_reply" == "n" && "$default" == "n" ]];then
+        return 0
+    elif [[ "$ask_reply" == "y" ]];then
+        return 0
+    elif [[ "$ask_reply" == "n" ]];then
+        return 1
+    else
+        ask "$@"; return $?
+    fi
+    
+}
+
+clean_up() {
+    [[ "$has_existing_configuration" ]] && \
+    cp "$tmp_config_file" "$directory/.config" && rm "$tmp_config_file"
+    printf '\n'
+    error ctrl_c
+}
+
+while getopts ":hvqo" argument; do
+    case "$argument" in
+        h)
+            help
+        ;;
+        v)
+            [[ "$quiet" ]] && error only_one_output_level
+            verbose=true
+        ;;
+        q)
+            [[ "$verbose" ]] && error only_one_output_level
+            quiet=true
+        ;;
+        o)
+            overwrite=true
+        ;;
+        # TODO: implement multi-branch support (longterm, next, etc)
+        # b)
+        #     branch="$OPTARG"
+        #     shift
+        # ;;
+        *)
+            invalid_arg "$OPTARG"
+        ;;
+    esac
+    shift
+done
+
+trap 'clean_up' 2 3 15
+
+if [[ "$#" -ne 0 ]];then
+    directory="$1"
+fi
+
+directory=$(realpath "$directory")
+
+debug "Directory: \"$directory\""
+debug "Branch: \"$branch\""
+
+# being update process
+
+debug "Changing to \"$directory\""
+if [[ -d "$directory" ]];then
+    cd "$directory" || error invalid_dir
+fi
+
+# backup kernel configuration, if there is one
+method=menuconfig
+
+if [[ -f .config ]];then
+    debug && printf "Creating .config backup..."
+    tmp_config_file=$(mktemp "$tmp_dir/.lux-$$-configXXXXXX") && debug && \
+        printf "$tmp_config_file" && printf '\n'
+    cat ".config" > "$tmp_config_file"
+    has_existing_configuration=true
+    debug "You have an existing kernel config, so we'll use \`silentoldconfig\`"
+    method=silentoldconfig
+    debug && printf '\n'
+fi
+
+# decide if we want to clone, or reset an existing repo
+if [[ ! -d ".git" ]];then
+    ask "There doesn't appear to be a git repository here. Make a new one?" && \
+    git clone "$kernel_repo" "$directory"
+fi
+
+# checking for updates
+quiet_git reset --hard origin/master
+quiet_git pull -f $(debug && echo -v)
+quiet_git fetch -p
+
+latest_version=$(git describe --tags $(git rev-list --tags --max-count=1))
+printf "Latest version available: %s\n" "$latest_version"
+
+# check if repository version is same as running
+if [[ "v$running_kernel_version" == "$latest_version" ]];then
+    need_update=
+    debug "You are currently running the same version as what is checked out right now. (running version v$running_kernel_version)"
+else
+    need_update=true
+    debug "You are not running the same as what is checked out right now. (running version v$running_kernel_version)"
+fi
+
+if [[ "$need_update" ]];then
+    ask "Do you want to update your kernel? (v$running_kernel_version --> $latest_version)" || error not_gonna_update
+else
+    ask "You don't need to update, you are running the latest version. Update anyway? (v$running_kernel_version)" n && error not_gonna_update
+fi
+
+quiet_git reset --hard "$latest_version"
+
+printf "Upgrading v$running_kernel_version --> $latest_version, press ^C to abort.\n"
+sleep 10
+
+kernel_configure
+kernel_compile
+kernel_install
+
+printf "Finished upgrading kernel. (v$running_kernel_version --> $latest_version)\n\n"
+
