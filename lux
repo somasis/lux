@@ -1,5 +1,5 @@
 #!/bin/bash
-# lux, a Linux kernel updater - version 0.2
+# lux, a Linux kernel updater - version 0.2.1
 # Usage: lux [-dhiquv] [directory]
 # Update a kernel source tree located in [directory] to the latest version, and
 # then configure and install it.
@@ -381,6 +381,11 @@ else
 fi
 
 quiet_git reset --hard "$latest_version"
+
+if [[ "$tmp_config_file" ]];then
+    debug "Writing config from backup"
+    cp -v "$tmp_config_file" ".config"
+fi
 
 printf "Upgrading v$running_kernel_version --> $latest_version, press ^C to abort.\n"
 sleep 10

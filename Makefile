@@ -3,8 +3,6 @@ PREFIX?=/usr
 DESCRIPTION=a Linux kernel updater
 HELP2MAN=help2man -n "$(DESCRIPTION)" -N --version-option -v --help-option -h
 
-all: clean man install
-
 clean:
 	rm -f lux.1
 
