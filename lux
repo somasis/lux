@@ -1,5 +1,5 @@
 #!/bin/bash
-# lux, a Linux kernel updater - version 0.2.1
+# lux, a Linux kernel updater - version 0.2.2
 # Usage: lux [-dhiquv] [directory]
 # Update a kernel source tree located in [directory] to the latest version, and
 # then configure and install it.
@@ -42,6 +42,10 @@ kernel_repo="https://git.kernel.org/pub/scm/linux/kernel/git/${branch}/linux-${b
 
 directory="$PWD"
 tmp_dir="/tmp"
+
+kernel_patch() {
+    true
+}
 
 kernel_configure() {
     # look at the .config backup logic to see how $method is determined
@@ -193,7 +197,6 @@ make() {
     command make $MAKEOPTS "$@" || error "$err"
 }
 
-
 ask() {
     local ask_text="$1"
     if [[ "$2" != "y" ]];then
@@ -306,12 +309,9 @@ if [[ ! -d "$directory" ]];then
 fi
 
 directory=$(realpath "$directory")
+debug "\"$directory\", \"$branch\" branch"
 
-debug "Directory: \"$directory\""
-debug "Branch: \"$branch\""
-
-# being update process
-
+# begin update process
 debug "Changing to \"$directory\""
 if [[ -d "$directory" ]];then
     cd "$directory"
@@ -344,8 +344,8 @@ error not_a_kernel_repo; }
 
 
 if [[ -z "$only_install" ]];then
-    debug "Updating kernel source tree."
-    
+    debug "\$only_install is not set; updating kernel source tree."
+
     # checking for updates
     quiet_git reset --hard origin/master
     quiet_git pull -f $(debug && echo -v)
@@ -355,10 +355,8 @@ if [[ -z "$only_install" ]];then
     printf "Latest version available: %s\n" "$latest_version"
 fi
 
-debug "only_install is set"
-
 if [[ "$only_update" ]];then
-    debug "Not installing, since you used -u."
+    debug "\$only_update is set, not installing."
     exit 0
 fi
 
@@ -390,8 +388,16 @@ fi
 printf "Upgrading v$running_kernel_version --> $latest_version, press ^C to abort.\n"
 sleep 10
 
+debug "Running \`kernel_patch\`"
+kernel_patch
+
+debug "Running \`kernel_configure\`"
 kernel_configure
+
+debug "Running \`kernel_compile\`"
 kernel_compile
+
+debug "Running \`kernel_install\`"
 kernel_install
 
 printf "Finished upgrading kernel. (v$running_kernel_version --> $latest_version)\n\n"
