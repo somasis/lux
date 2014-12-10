@@ -354,8 +354,8 @@ if [[ -z "$only_install" ]];then
     quiet_git pull -f $(debug && echo -v)
     quiet_git fetch -p
 
-    latest_version=$(git describe --tags $(git rev-list --tags --max-count=1))
-    printf "Latest version available: %s\n" "$latest_version"
+    latest_version=$(git describe --tags $(git rev-list --tags --max-count=1) | sed 's/^v//')
+    printf "Latest version available: v%s\n" "$latest_version"
 fi
 
 if [[ "$only_update" ]];then
@@ -363,11 +363,11 @@ if [[ "$only_update" ]];then
     exit 0
 fi
 
-latest_version=$(git describe --tags $(git rev-list --tags --max-count=1))
+latest_version=$(git describe --tags $(git rev-list --tags --max-count=1) | sed 's/^v//')
 debug "Installing kernel source tree."
 
 # check if repository version is same as running
-if [[ "v$running_kernel_version" == "$latest_version" ]];then
+if [[ "$running_kernel_version" == "$latest_version" ]];then
     need_update=
     debug "You are currently running the same version as what is checked out right now. (running version v$running_kernel_version)"
 else
@@ -376,19 +376,19 @@ else
 fi
 
 if [[ "$need_update" ]];then
-    ask "Do you want to update your kernel? (v$running_kernel_version --> $latest_version)" || error not_gonna_update
+    ask "Do you want to update your kernel? (v$running_kernel_version --> v$latest_version)" || error not_gonna_update
 else
     ask "You don't need to update, you are running the latest version. Update anyway? (v$running_kernel_version)" n && error not_gonna_update
 fi
 
-quiet_git reset --hard "$latest_version"
+quiet_git reset --hard "v${latest_version}"
 
 if [[ "$tmp_config_file" ]];then
     debug "Writing config from backup"
     cp -v "$tmp_config_file" ".config"
 fi
 
-printf "Upgrading v$running_kernel_version --> $latest_version, press ^C to abort.\n"
+printf "Upgrading v$running_kernel_version --> v$latest_version, press ^C to abort.\n"
 sleep 10
 
 debug "Running \`kernel_patch\`"
@@ -403,5 +403,5 @@ kernel_compile
 debug "Running \`kernel_install\`"
 kernel_install
 
-printf "Finished upgrading kernel. (v$running_kernel_version --> $latest_version)\n\n"
+printf "Finished upgrading kernel. (v$running_kernel_version --> v$latest_version)\n\n"
 
