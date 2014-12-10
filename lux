@@ -40,8 +40,9 @@ MAKEOPTS="-j$(getconf _NPROCESSORS_ONLN)"
 branch=stable
 kernel_repo="https://git.kernel.org/pub/scm/linux/kernel/git/${branch}/linux-${branch}.git"
 
-directory="$PWD"
 tmp_dir="/tmp"
+
+directory="$PWD"
 
 kernel_patch() {
     true
@@ -74,6 +75,8 @@ kernel_install() {
         error kernel_failed_to_install
 }
 
+config="/etc/lux.conf"
+
 # you should not need to edit anything past here
 
 set -o pipefail
@@ -97,6 +100,8 @@ err_kernel_failed_to_install=67
 err_ctrl_c=127
 
 running_kernel_version=$(uname -r | cut -d'-' -f1)
+
+[[ -f "${config:-/etc/lux.conf}" ]] && . /etc/lux.conf
 
 debug() {
     if [[ "$verbose" ]];then
@@ -235,8 +240,6 @@ ask() {
 }
 
 clean_up() {
-    [[ "$has_existing_configuration" ]] && \
-    cp "$tmp_config_file" "$directory/.config" && rm "$tmp_config_file"
     printf '\n'
     error ctrl_c
 }
