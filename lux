@@ -1,10 +1,10 @@
 #!/bin/bash
-# lux, a Linux kernel updater - version 0.2.2
+# lux, a Linux kernel updater - version 0.2.4
 # Usage: lux [-dhiquv] [directory]
 # Update a kernel source tree located in [directory] to the latest version, and
 # then configure and install it.
 #
-# If unspecified, [directory] is the current working directory.
+# If unspecified, [directory] is /usr/src/linux-stable
 #
 # Options:
 #      -u                       only update the kernel source; don't install
@@ -34,15 +34,18 @@
 # End of copyright.
 #
 
+#
+# You can replace any of these values/functions with your own custom stuff in lux.conf
+#
+
 # Optimize for multi-core, use a thread for each core
 MAKEOPTS="-j$(getconf _NPROCESSORS_ONLN)"
 
+directory=/usr/src/linux-$branch
 branch=stable
 kernel_repo="https://git.kernel.org/pub/scm/linux/kernel/git/${branch}/linux-${branch}.git"
 
 tmp_dir="/tmp"
-
-directory="$PWD"
 
 kernel_patch() {
     true
@@ -50,6 +53,16 @@ kernel_patch() {
 
 kernel_configure() {
     # look at the .config backup logic to see how $method is determined
+    if [[ "$method" == "silentoldconfig" ]];then
+        if ask "Do you want to configure the kernel?" n;then
+            if [[ -z "$quiet" ]];then
+                method=menuconfig
+            fi
+        else
+            method=$method
+        fi
+    fi
+
     err=kernel_configuration_failed make $method
 }
 
@@ -57,27 +70,26 @@ kernel_compile() {
     err=kernel_compilation_failed make
 }
 
-# TODO: do kernel installation in a more intelligent way?
 kernel_install() {
     arch=$(uname -m)
     case "$arch" in
-        i686)
-            arch=x86
-        ;;
-        x86_64)
+        i686|x86_64)
             arch=x86
         ;;
     esac
-    
+
     err=kernel_modules_install_failed make modules_install
-    echo "\`cp -Lv \"arch/${arch}/boot/bzImage\" "/boot/kernel"\`"
     cp -Lv "arch/${arch}/boot/bzImage" "/boot/kernel" || \
         error kernel_failed_to_install
 }
 
 config="/etc/lux.conf"
 
-# you should not need to edit anything past here
+#
+# End of configuration variables.
+#
+# Don't edit anything past here.
+#
 
 set -o pipefail
 
@@ -174,17 +186,22 @@ git() {
 }
 
 quiet_git() {
+    local cmd="$1"
+    shift
     local args="$@"
-    [[ -z "$quiet" ]] && git "$args" && return $?
-    case "$1" in
+    
+    if [[ "$verbose" ]];then
+        eval "git $args"; return $?
+    fi
+    case "$cmd" in
         checkout|fetch)
-            args="$args -q"
+            args="$cmd $args -q"
         ;;
-        pull)
-            args="$args -q >/dev/null 2>&1"
+        pull|reset)
+            args="$cmd $args >/dev/null 2>&1"
         ;;
     esac
-    eval git "$args"
+    eval "git $args"; return $?
 }
 
 is_actually_kernel_repo() {
@@ -244,6 +261,13 @@ clean_up() {
     error ctrl_c
 }
 
+cp() {
+    if [[ "$debug" ]];then
+        command cp -v "$@"
+    else
+        command cp "$@"
+    fi
+}
 
 while [[ $# -ne 0 ]];do
     arg="$1"
@@ -356,7 +380,7 @@ if [[ -z "$only_install" ]];then
     quiet_git fetch -p
 
     latest_version=$(git describe --tags $(git rev-list --tags --max-count=1) | sed 's/^v//')
-    printf "Latest version available: v%s\n" "$latest_version"
+    debug "Latest version available: v%s\n" "$latest_version"
 fi
 
 if [[ "$only_update" ]];then
@@ -386,7 +410,7 @@ quiet_git reset --hard "v${latest_version}"
 
 if [[ "$tmp_config_file" ]];then
     debug "Writing config from backup"
-    cp -v "$tmp_config_file" ".config"
+    cp "$tmp_config_file" ".config"
 fi
 
 printf "Upgrading v$running_kernel_version --> v$latest_version, press ^C to abort.\n"
