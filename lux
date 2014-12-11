@@ -5,7 +5,7 @@
 # then configure and install it.
 #
 # If unspecified, [directory] is the current working directory.
-# 
+#
 # Options:
 #      -u                       only update the kernel source; don't install
 #      -i                       only install the kernel source; don't update
@@ -22,7 +22,7 @@
 # Permission to use, copy, modify, and/or distribute this software for any
 # purpose with or without fee is hereby granted, provided that the above
 # copyright notice and this permission notice appear in all copies.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
 # REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
 # AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
@@ -351,7 +351,8 @@ if [[ -z "$only_install" ]];then
 
     # checking for updates
     quiet_git reset --hard origin/master
-    quiet_git pull -f $(debug && echo -v)
+    quiet_git checkout -f HEAD
+    quiet_git pull -f $(debug && echo -v) origin master
     quiet_git fetch -p
 
     latest_version=$(git describe --tags $(git rev-list --tags --max-count=1) | sed 's/^v//')
