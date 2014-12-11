@@ -348,13 +348,12 @@ fi
 method=menuconfig
 
 if [[ -f .config ]];then
-    debug && printf "Creating .config backup..."
     tmp_config_file=$(mktemp "$tmp_dir/.lux-$$-configXXXXXX")
-    cat ".config" > "$tmp_config_file" && debug && printf " $tmp_config_file\n"
+    cat ".config" > "$tmp_config_file"
+    debug "Made config backup at \"$tmp_config_file\n"
     has_existing_configuration=true
-    debug "You have an existing kernel config, so we'll use \`silentoldconfig\`"
+    debug "Since you have an existing kernel config, so we'll use \`silentoldconfig\`"
     method=silentoldconfig
-    debug && printf '\n'
 fi
 
 # decide if we want to clone, or reset an existing repo
@@ -413,7 +412,7 @@ if [[ "$tmp_config_file" ]];then
     cp "$tmp_config_file" ".config"
 fi
 
-printf "Upgrading v$running_kernel_version --> v$latest_version, press ^C to abort.\n"
+printf "Upgrading v%s --> v%s, press ^C to abort.\n" "$running_kernel_version" "$latest_version"
 sleep 10
 
 debug "Running \`kernel_patch\`"
@@ -428,5 +427,5 @@ kernel_compile
 debug "Running \`kernel_install\`"
 kernel_install
 
-printf "Finished upgrading kernel. (v$running_kernel_version --> v$latest_version)\n\n"
+printf 'Finished upgrading kernel. (v%s --> v%s)\n\n' "$running_kernel_version" "$latest_version"
 
