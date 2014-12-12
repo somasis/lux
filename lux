@@ -41,9 +41,14 @@
 # Optimize for multi-core, use a thread for each core
 MAKEOPTS="-j$(getconf _NPROCESSORS_ONLN)"
 
-directory=/usr/src/linux-$branch
+directory="/usr/src/linux-$branch"
 branch=stable
 kernel_repo="https://git.kernel.org/pub/scm/linux/kernel/git/${branch}/linux-${branch}.git"
+
+patch_log="${directory}/lux-patch.log"
+configure_log="${directory}/lux-configure.log"
+compile_log="${directory}/lux-compile.log"
+install_log="${directory}/lux-install.log"
 
 tmp_dir="/tmp"
 
@@ -97,10 +102,11 @@ me="${0##*/}"
 
 err_good=0
 err_invalid_arg=1
-err_invalid_dir=2
+err_nonexistant_dir=2
 err_git=3
 err_no_git_repo=4
 err_unable_to_make_dir=5
+err_unwritable_dir=6
 err_not_gonna_update=10
 err_only_one_action=31
 err_only_one_output_level=32
@@ -118,7 +124,7 @@ running_kernel_version=$(uname -r | cut -d'-' -f1)
 debug() {
     if [[ "$verbose" ]];then
         if [[ ! -z "$@" ]];then
-            printf '%s: %s\n' "$me" "$@" >&2
+            stderr '%s: %s\n' "$me" "$@"
         else
             return 0
         fi
@@ -167,12 +173,12 @@ copyright() {
 
 error() {
     local error_code=$(eval echo "\$err_$@")
-    debug "Exiting due to \"$@\" (error code: $error_code)"
+    stderr "Exiting due to \"%s\" (error code: %s)\n" "$@" "$error_code"
     exit $error_code
 }
 
 invalid_arg() {
-    printf "$me: invalid option -- '$@'\n"
+    stderr "$me: invalid option -- '$@'\n"
     error invalid_arg
 }
 
@@ -256,6 +262,10 @@ ask() {
     
 }
 
+stderr() {
+    printf "$@" >&2
+}
+
 clean_up() {
     printf '\n'
     error ctrl_c
@@ -263,7 +273,7 @@ clean_up() {
 
 cp() {
     if [[ "$debug" ]];then
-        command cp -v "$@"
+        command cp -v "$@" >&2
     else
         command cp "$@"
     fi
@@ -276,34 +286,34 @@ while [[ $# -ne 0 ]];do
     fi
     arg="$1"
     shift
-    
+
     while getopts ":dhiquv" argument "$arg"; do
         case "$argument" in
             d)
                 verbose=true
                 [[ "$quiet" ]] && { 
-                    printf "Either -q or -d, not both please.\n"
+                    stderr "Either -q or -d, not both please.\n"
                     error only_one_action
                 }
             ;;
             q)
                 quiet=true
                 [[ "$verbose" ]] && { 
-                    printf "Either -q or -d, not both please.\n"
+                    stderr "Either -q or -d, not both please.\n"
                     error only_one_action
                 }
             ;;
             i)
                 only_install=true
                 [[ "$only_update" ]] && { 
-                    printf "Either -u or -i, not both please.\n"
+                    stderr "Either -u or -i, not both please.\n"
                     error only_one_action
                 }
             ;;
             u)
                 only_update=true
                 [[ "$only_install" ]] && { 
-                    printf "Either -u or -i, not both please.\n"
+                    stderr "Either -u or -i, not both please.\n"
                     error only_one_action
                 }
             ;;
@@ -326,13 +336,14 @@ while [[ $# -ne 0 ]];do
             ;;
         esac
     done
-    
 done
 
 trap 'clean_up' 2 3 15
 
 if [[ ! -d "$directory" ]];then
-    error invalid_dir
+    error nonexistant_dir
+elif [[ ! -w "$directory" ]];then
+    error unwritable_dir
 fi
 
 directory=$(realpath "$directory")
@@ -340,9 +351,7 @@ debug "\"$directory\", \"$branch\" branch"
 
 # begin update process
 debug "Changing to \"$directory\""
-if [[ -d "$directory" ]];then
-    cd "$directory"
-fi
+cd "$directory"
 
 # backup kernel configuration, if there is one
 method=menuconfig
@@ -365,7 +374,7 @@ if [[ ! -d ".git" ]];then
     fi
 fi
 
-is_actually_kernel_repo || { printf "This is not a kernel source tree.\n" &&
+is_actually_kernel_repo || { stderr "This is not a kernel source tree.\n" &&
 error not_a_kernel_repo; }
 
 
@@ -416,16 +425,16 @@ printf "Upgrading v%s --> v%s, press ^C to abort.\n" "$running_kernel_version" "
 sleep 10
 
 debug "Running \`kernel_patch\`"
-kernel_patch
+kernel_patch 2>&1 | tee -a "$patch_log"
 
 debug "Running \`kernel_configure\`"
-kernel_configure
+kernel_configure 2>&1 | tee -a "$configure_log"
 
 debug "Running \`kernel_compile\`"
-kernel_compile
+kernel_compile 2>&1 | tee -a "$compile_log"
 
 debug "Running \`kernel_install\`"
-kernel_install
+kernel_install 2>&1 | tee -a "$install_log"
 
 printf 'Finished upgrading kernel. (v%s --> v%s)\n\n' "$running_kernel_version" "$latest_version"
 
