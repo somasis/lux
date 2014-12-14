@@ -41,12 +41,11 @@
 # Optimize for multi-core, use a thread for each core
 MAKEOPTS="-j$(getconf _NPROCESSORS_ONLN)"
 
-directory="/usr/src/linux-$branch"
 branch=stable
 kernel_repo="https://git.kernel.org/pub/scm/linux/kernel/git/${branch}/linux-${branch}.git"
+directory=
 
 patch_log="${directory}/lux-patch.log"
-configure_log="${directory}/lux-configure.log"
 compile_log="${directory}/lux-compile.log"
 install_log="${directory}/lux-install.log"
 
@@ -121,6 +120,9 @@ running_kernel_version=$(uname -r | cut -d'-' -f1)
 
 [[ -f "${config:-/etc/lux.conf}" ]] && . /etc/lux.conf
 
+directory="${directory:-/usr/src/linux-$branch}"
+
+
 debug() {
     if [[ "$verbose" ]];then
         if [[ ! -z "$@" ]];then
@@ -129,7 +131,7 @@ debug() {
             return 0
         fi
     else
-        return 1        
+        return 1
     fi
 }
 
@@ -195,9 +197,9 @@ quiet_git() {
     local cmd="$1"
     shift
     local args="$@"
-    
+
     if [[ "$verbose" ]];then
-        eval "git $args"; return $?
+        eval "git $cmd $args"; return $?
     fi
     case "$cmd" in
         checkout|fetch)
@@ -205,6 +207,9 @@ quiet_git() {
         ;;
         pull|reset)
             args="$cmd $args >/dev/null 2>&1"
+        ;;
+        *)
+            args="$cmd $args"
         ;;
     esac
     eval "git $args"; return $?
@@ -424,16 +429,22 @@ fi
 printf "Upgrading v%s --> v%s, press ^C to abort.\n" "$running_kernel_version" "$latest_version"
 sleep 10
 
-debug "Running \`kernel_patch\`"
+touch "$patch_log" "$compile_log" "$install_log" >/dev/null 2>&1
+
+[[ ! -w "$patch_log"   ]] && patch_log="/dev/null"
+[[ ! -w "$compile_log" ]] && compile_log="/dev/null"
+[[ ! -w "$install_log" ]] && install_log="/dev/null"
+
+debug "Running \`kernel_patch\`; logging to \"$patch_log\""
 kernel_patch 2>&1 | tee -a "$patch_log"
 
-debug "Running \`kernel_configure\`"
-kernel_configure 2>&1 | tee -a "$configure_log"
+debug "Running \`kernel_configure\`; we can't log this due to complications involving menuconfig"
+kernel_configure
 
-debug "Running \`kernel_compile\`"
+debug "Running \`kernel_compile\`; logging to \"$compile_log\""
 kernel_compile 2>&1 | tee -a "$compile_log"
 
-debug "Running \`kernel_install\`"
+debug "Running \`kernel_install\`; logging to \"$install_log\""
 kernel_install 2>&1 | tee -a "$install_log"
 
 printf 'Finished upgrading kernel. (v%s --> v%s)\n\n' "$running_kernel_version" "$latest_version"
