@@ -10,6 +10,8 @@
 #      -u                       only update the kernel source; don't install
 #      -i                       only install the kernel source; don't update
 #
+#      -t                       set a target version, instead of latest version
+#
 #      -q                       non-interactive; use defaults for all questions
 #      -d                       debug mode, be verbose
 #
@@ -44,10 +46,6 @@ MAKEOPTS="-j$(getconf _NPROCESSORS_ONLN)"
 branch=stable
 kernel_repo="https://git.kernel.org/pub/scm/linux/kernel/git/${branch}/linux-${branch}.git"
 directory=
-
-patch_log="${directory}/lux-patch.log"
-compile_log="${directory}/lux-compile.log"
-install_log="${directory}/lux-install.log"
 
 tmp_dir="/tmp"
 
@@ -121,7 +119,9 @@ running_kernel_version=$(uname -r | cut -d'-' -f1)
 [[ -f "${config:-/etc/lux.conf}" ]] && . /etc/lux.conf
 
 directory="${directory:-/usr/src/linux-$branch}"
-
+patch_log="${directory}/lux-patch.log"
+compile_log="${directory}/lux-compile.log"
+install_log="${directory}/lux-install.log"
 
 debug() {
     if [[ "$verbose" ]];then
@@ -248,7 +248,7 @@ ask() {
     fi
     
     ask_reply=$(echo "$ask_reply" | tr 'A-Z' 'a-z')
-    
+     
     if [[ -z "$ask_reply" ]];then
         ask_reply="$default"
     fi
@@ -284,6 +284,14 @@ cp() {
     fi
 }
 
+get_target_version() {
+    local _target_version="$target_version"
+    if [[ -z "$_target_version" ]];then
+        _target_version=$(git describe --abbrev=0 --tags | sed 's/^v//')
+    fi
+    echo "$_target_version"
+}
+
 while [[ $# -ne 0 ]];do
     arg="$1"
     if [[ -d "$arg" ]];then
@@ -292,8 +300,11 @@ while [[ $# -ne 0 ]];do
     arg="$1"
     shift
 
-    while getopts ":dhiquv" argument "$arg"; do
+    while getopts ":dhiquvt" argument "$arg"; do
         case "$argument" in
+            t)
+                target_version="$1"
+                ;;
             d)
                 verbose=true
                 [[ "$quiet" ]] && { 
@@ -337,7 +348,7 @@ while [[ $# -ne 0 ]];do
             #     shift
             # ;;
             *)
-                invalid_arg "$OPTARG"
+                invalid_arg "$1"
             ;;
         esac
     done
@@ -392,8 +403,8 @@ if [[ -z "$only_install" ]];then
     quiet_git pull -f $(debug && echo -v) origin master
     quiet_git fetch -p
 
-    latest_version=$(git describe --tags $(git rev-list --tags --max-count=1) | sed 's/^v//')
-    debug "Latest version available: v%s\n" "$latest_version"
+    target_version=$(get_target_version)
+    debug "Target version: v%s\n" "$target_version"
 fi
 
 if [[ "$only_update" ]];then
@@ -401,11 +412,11 @@ if [[ "$only_update" ]];then
     exit 0
 fi
 
-latest_version=$(git describe --tags $(git rev-list --tags --max-count=1) | sed 's/^v//')
+[[ -z "$target_version" ]] && target_version=$(get_target_version)
 debug "Installing kernel source tree."
 
 # check if repository version is same as running
-if [[ "$running_kernel_version" == "$latest_version" ]];then
+if [[ "$running_kernel_version" == "$target_version" ]];then
     need_update=
     debug "You are currently running the same version as what is checked out right now. (running version v$running_kernel_version)"
 else
@@ -414,19 +425,21 @@ else
 fi
 
 if [[ "$need_update" ]];then
-    ask "Do you want to update your kernel? (v$running_kernel_version --> v$latest_version)" || error not_gonna_update
-else
+    ask "Do you want to update your kernel? (v$running_kernel_version --> v$target_version)" || error not_gonna_update
+elif [[ -z "$need_update" ]];then
     ask "You don't need to update, you are running the latest version. Update anyway? (v$running_kernel_version)" n && error not_gonna_update
 fi
 
-quiet_git reset --hard "v${latest_version}"
+quiet_git reset --hard "v${target_version}"
+
+make mrproper
 
 if [[ "$tmp_config_file" ]];then
     debug "Writing config from backup"
     cp "$tmp_config_file" ".config"
 fi
 
-printf "Upgrading v%s --> v%s, press ^C to abort.\n" "$running_kernel_version" "$latest_version"
+printf "Upgrading v%s --> v%s, press ^C to abort.\n" "$running_kernel_version" "$target_version"
 sleep 10
 
 touch "$patch_log" "$compile_log" "$install_log" >/dev/null 2>&1
@@ -447,5 +460,5 @@ kernel_compile 2>&1 | tee -a "$compile_log"
 debug "Running \`kernel_install\`; logging to \"$install_log\""
 kernel_install 2>&1 | tee -a "$install_log"
 
-printf 'Finished upgrading kernel. (v%s --> v%s)\n\n' "$running_kernel_version" "$latest_version"
+printf 'Finished upgrading kernel. (v%s --> v%s)\n\n' "$running_kernel_version" "$target_version"
 
