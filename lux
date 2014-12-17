@@ -65,11 +65,11 @@ kernel_configure() {
         fi
     fi
 
-    err=kernel_configuration_failed make $method
+    make $method || error kernel_configuration_failed
 }
 
 kernel_compile() {
-    err=kernel_compilation_failed make
+    make || error kernel_compilation_failed
 }
 
 kernel_install() {
@@ -80,8 +80,8 @@ kernel_install() {
         ;;
     esac
 
-    err=kernel_modules_install_failed make modules_install
-    cp -Lv "arch/${arch}/boot/bzImage" "/boot/kernel" || \
+    make modules_install || error kernel_modules_install_failed
+    yes | cp -Lv "arch/${arch}/boot/bzImage" "/boot/kernel" || \
         error kernel_failed_to_install
 }
 
@@ -227,7 +227,7 @@ is_actually_kernel_repo() {
 
 make() {
     debug "executing \`make $MAKEOPTS $@\`"
-    command make $MAKEOPTS "$@" || error "$err"
+    command make $MAKEOPTS "$@" || return "$?"
 }
 
 ask() {
