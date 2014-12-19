@@ -73,16 +73,9 @@ kernel_compile() {
 }
 
 kernel_install() {
-    arch=$(uname -m)
-    case "$arch" in
-        i686|x86_64)
-            arch=x86
-        ;;
-    esac
-
     make modules_install || error kernel_modules_install_failed
-    yes | cp -Lv "arch/${arch}/boot/bzImage" "/boot/kernel" || \
-        error kernel_failed_to_install
+    image="$directory/$(make image_name)"
+    cp -fv "$image" "/boot/kernel" || error kernel_failed_to_install
 }
 
 config="/etc/lux.conf"
