@@ -1,5 +1,5 @@
 #!/bin/bash
-# lux, a Linux kernel updater - version 0.2.4
+# lux, a Linux kernel updater - version 0.2.5
 # Usage: lux [-dhiquv] [directory]
 # Update a kernel source tree located in [directory] to the latest version, and
 # then configure and install it.
@@ -114,7 +114,7 @@ err_kernel_modules_install_failed=66
 err_kernel_failed_to_install=67
 err_ctrl_c=127
 
-running_kernel_version=$(uname -r | cut -d'-' -f1)
+running_kernel_version=$(uname -r | cut -d'-' -f1 | sed 's/\.0$//')
 
 [[ -f "${config:-/etc/lux.conf}" ]] && . /etc/lux.conf
 
@@ -461,4 +461,3 @@ debug "Running \`kernel_install\`; logging to \"$install_log\""
 kernel_install 2>&1 | tee -a "$install_log"
 
 printf 'Finished upgrading kernel. (v%s --> v%s)\n\n' "$running_kernel_version" "$target_version"
-
