@@ -75,6 +75,12 @@ kernel_compile() {
 kernel_install() {
     make modules_install || error kernel_modules_install_failed
     image="$directory/$(make image_name)"
+    old_kernel=$(file /boot/kernel | sed 's/.*, version /v/;s/ , .*//')
+    old_kernel_ver=$(echo "$old_kernel" | cut -d' ' -f1 | cut -d'v' -f2)
+    new_kernel=$(file "$image" | sed 's/.*, version /v/;s/ , .*//')
+    debug "Backing up old kernel... \"%s\"" "$old_kernel"
+    cp -fv "/boot/kernel" "/boot/kernel-$old_kernel_ver"
+    debug "Installing new kernel... \"%s\"" "$new_kernel"
     cp -fv "$image" "/boot/kernel" || error kernel_failed_to_install
 }
 
