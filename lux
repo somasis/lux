@@ -226,7 +226,7 @@ make() {
 
 ask() {
     local ask_text="$1"
-    if [[ "$2" != "y" ]];then
+    if [[ "$2" == "y" || "$#" -lt 2 ]];then
         local default='y'
         local default_text="Y/n"
     else
@@ -422,7 +422,7 @@ fi
 if [[ "$need_update" ]];then
     ask "Do you want to update your kernel? (v$running_kernel_version --> v$target_version)" || error not_gonna_update
 elif [[ -z "$need_update" ]];then
-    ask "You don't need to update, you are running the latest version. Update anyway? (v$running_kernel_version)" n && error not_gonna_update
+    ask "You don't need to update, you are running the latest version. Update anyway? (v$running_kernel_version)" || error not_gonna_update
 fi
 
 quiet_git reset --hard "v${target_version}"
