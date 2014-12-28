@@ -48,12 +48,35 @@ kernel_repo="https://git.kernel.org/pub/scm/linux/kernel/git/${branch}/linux-${b
 directory=
 
 tmp_dir="/tmp"
+config="/etc/lux.conf"
 
 kernel_patch() {
-    true
+    default_kernel_patch "$@"
 }
 
 kernel_configure() {
+    default_kernel_configure "$@"
+}
+
+kernel_compile() {
+    default_kernel_compile "$@"
+}
+
+kernel_install() {
+    default_kernel_install "$@"
+}
+
+#
+# End of configuration variables.
+#
+# Don't edit anything past here.
+#
+
+default_kernel_patch() {
+    :
+}
+
+default_kernel_configure() {
     # look at the .config backup logic to see how $method is determined
     if [[ "$method" == "silentoldconfig" ]];then
         if ask "Do you want to configure the kernel?" n;then
@@ -68,11 +91,11 @@ kernel_configure() {
     make $method || error kernel_configuration_failed
 }
 
-kernel_compile() {
+default_kernel_compile() {
     make || error kernel_compilation_failed
 }
 
-kernel_install() {
+default_kernel_install() {
     make modules_install || error kernel_modules_install_failed
     image="$directory/$(make image_name)"
     old_kernel=$(file /boot/kernel | sed 's/.*, version /v/;s/ , .*//')
@@ -83,14 +106,6 @@ kernel_install() {
     debug "Installing new kernel... \"%s\"" "$new_kernel"
     cp -fv "$image" "/boot/kernel" || error kernel_failed_to_install
 }
-
-config="/etc/lux.conf"
-
-#
-# End of configuration variables.
-#
-# Don't edit anything past here.
-#
 
 set -o pipefail
 
