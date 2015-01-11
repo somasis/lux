@@ -1,5 +1,5 @@
 #!/bin/bash
-# lux, a Linux kernel updater - version 0.2.8
+# lux, a Linux kernel updater - version 0.2.9
 # Usage: lux [-dhiquv] [-t <version>] [directory]
 # Update a kernel source tree located in [directory] to the latest version, and
 # then configure and install it.
@@ -19,7 +19,7 @@
 #      -v                       show version
 #
 # End of help.
-# Copyright (c) 2015, Kylie McClain <somasissounds@gmail.com>
+# Copyright (c) 2014-2015, Kylie McClain <somasissounds@gmail.com>
 #
 # Permission to use, copy, modify, and/or distribute this software for any
 # purpose with or without fee is hereby granted, provided that the above
@@ -66,6 +66,10 @@ kernel_install() {
     default_kernel_install "$@"
 }
 
+get_target_version() {
+    default_get_target_version "$@"
+}
+
 #
 # End of configuration variables.
 #
@@ -105,6 +109,19 @@ default_kernel_install() {
     cp -fv "/boot/kernel" "/boot/kernel-$old_kernel_ver"
     debug "Installing new kernel... \"%s\"" "$new_kernel"
     cp -fv "$image" "/boot/kernel" || error kernel_failed_to_install
+}
+
+default_get_target_version() {
+    local _target_version="$target_version"
+    if [[ -z "$_target_version" ]];then
+        _target_version=$(git tag --sort v:refname | uniq | cut -d'v' -f2-)
+        if [[ "$branch" == *stable* ]];then # if following stable branch you probably don't want an dash versions
+            debug "Filtering out versions ending with dashed sections, those are testing versions..."
+            _target_version=$(echo "$_target_version" | grep -v -- '-.*')
+        fi
+        _target_version=$(echo "$_target_version" | tail -n1)
+    fi
+    echo "$_target_version"
 }
 
 set -o pipefail
@@ -297,14 +314,6 @@ cp() {
     else
         command cp "$@"
     fi
-}
-
-get_target_version() {
-    local _target_version="$target_version"
-    if [[ -z "$_target_version" ]];then
-        _target_version=$(git tag --sort v:refname | cut -d'-' -f1 | uniq | tail -n1 | cut -d'v' -f2-)
-    fi
-    echo "$_target_version"
 }
 
 directory=$(realpath "$directory")
