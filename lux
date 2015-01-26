@@ -1,5 +1,5 @@
 #!/bin/bash
-# lux, a Linux kernel updater - version 0.2.9
+# lux, a Linux kernel updater - version 0.2.10
 # Usage: lux [-dhiquv] [-t <version>] [directory]
 # Update a kernel source tree located in [directory] to the latest version, and
 # then configure and install it.
@@ -84,11 +84,9 @@ default_kernel_configure() {
     # look at the .config backup logic to see how $method is determined
     if [[ "$method" == "silentoldconfig" ]];then
         if ask "Do you want to configure the kernel?" n;then
-            if [[ -z "$quiet" ]];then
-                method=menuconfig
-            fi
-        else
             method=$method
+        else
+            method=menuconfig
         fi
     fi
 
@@ -263,40 +261,37 @@ make() {
 }
 
 ask() {
-    local ask_text="$1"
+    ask_text="$1"
     if [[ "$2" == "y" || "$#" -lt 2 ]];then
-        local default='y'
-        local default_text="Y/n"
+        _default='y'
+        _default_text="Y/n"
     else
-        local default='n'
-        local default_text="y/N"
+        _default='n'
+        _default_text="y/N"
     fi
-    
+
     if [[ "$quiet" ]];then
-        ask_reply="$default"
+        ask_reply="$_default"
     else
-        printf "%s [%s] " "$ask_text" "$default_text"
+        printf "%s [%s] " "$ask_text" "$_default_text"
         read -n1 ask_reply; printf '\n'
     fi
-    
+
     ask_reply=$(echo "$ask_reply" | tr 'A-Z' 'a-z')
-     
+
     if [[ -z "$ask_reply" ]];then
-        ask_reply="$default"
+        ask_reply="$_default"
     fi
-    
-    if [[ "$ask_reply" == "y" && "$default" == "y" ]];then
+
+    if [[ "$_default" == "$ask_reply" ]];then
         return 0
-    elif [[ "$ask_reply" == "n" && "$default" == "n" ]];then
-        return 0
-    elif [[ "$ask_reply" == "y" ]];then
-        return 0
-    elif [[ "$ask_reply" == "n" ]];then
+    elif [[ "$_default" != "$ask_reply" ]] && [[ "$ask_reply" == 'y' || "$ask_reply" == 'n' ]];then
         return 1
     else
         ask "$@"; return $?
     fi
 
+    return $?
 }
 
 stderr() {
