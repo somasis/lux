@@ -379,7 +379,7 @@ trap 'clean_up' 2 3 15
 
 if [[ ! -d "$directory" ]];then
     error nonexistant_dir
-elif [[ ! -w "$directory" ]];then
+elif [[ ! -w "$directory/Makefile" || ! -w "$directory/.config" ]];then
     error unwritable_dir
 fi
 
