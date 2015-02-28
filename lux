@@ -7,6 +7,8 @@
 # If unspecified and not set in lux.conf, [directory] is /usr/src/linux-stable
 #
 # Options:
+#      -f                       get a fresh tree
+#
 #      -u                       only update the kernel source; don't install
 #      -i                       only install the kernel source; don't update
 #
@@ -113,6 +115,10 @@ default_get_target_version() {
     local _target_version="$target_version"
     if [[ -z "$_target_version" ]];then
         _target_version=$(git tag --sort v:refname | uniq | cut -d'v' -f2-)
+        if [[ $(echo "$_target_version" | wc -l) -lt 5 ]];then # probably a shallow clone
+            # so contact the remote for the tag list instead
+            _target_version=$(git ls-remote -t "$kernel_repo" | sort -V -t $'\t' -k 2 | sed 's#.*refs/tags/##;s#\^{}.*##' | cut -d'v' -f2-)
+        fi
         if [[ "$branch" == *stable* ]];then # if following stable branch you probably don't want an dash versions
             debug "Filtering out versions ending with dashed sections, those are testing versions..."
             _target_version=$(echo "$_target_version" | grep -v -- '-.*')
@@ -133,6 +139,7 @@ err_git=3
 err_no_git_repo=4
 err_unable_to_make_dir=5
 err_unwritable_dir=6
+err_cant_change_dir=7
 err_not_gonna_update=10
 err_only_one_action=31
 err_only_one_output_level=32
@@ -248,7 +255,9 @@ quiet_git() {
 is_actually_kernel_repo() {
     # sanity checks to make sure this is actually a kernel git repo
     # kernel Makefile always has VERSION as first line
-    if [[ -f Makefile ]] && head -1 Makefile | grep -q '^VERSION';then
+    [[ ! -z "$fresh_tree" ]] && return 0
+
+    if [[ -f "${directory}/Makefile" ]] && head -1 "${directory}/Makefile" | grep -q '^VERSION';then
         return 0
     else
         return 1
@@ -315,13 +324,13 @@ directory=$(realpath "$directory")
 
 while [[ $# -ne 0 ]];do
     arg="$1"
-    if [[ -d "$arg" ]] || echo "$arg" | egrep '^(.*/)([^/]*)$';then # looks like a dir
+    if [[ -d "$arg" ]] || echo "$arg" | egrep -q '^(.*/)([^/]*)$';then # looks like a dir
         directory="$arg"
     fi
     arg="$1"
     shift
 
-    while getopts ":dhiquvt" argument "$arg"; do
+    while getopts ":dfhiquvt" argument "$arg"; do
         case "$argument" in
             t)
                 target_version="$1"
@@ -354,6 +363,9 @@ while [[ $# -ne 0 ]];do
                     error only_one_action
                 }
             ;;
+            f)
+                fresh_tree=true
+            ;;
             h)
                 help
             ;;
@@ -377,12 +389,10 @@ done
 
 trap 'clean_up' 2 3 15
 
-if [[ ! -d "$directory" && -z "$only_update" ]];then
-    echo "If \"$directory\" needs to have a fresh kernel tree, run \`lux -u\`."
+if [[ ! -d "$directory" && -z "$fresh_tree" ]];then
+    echo "If \"$directory\" needs to have a fresh kernel tree, run \`lux -f\`."
     error nonexistant_dir
-elif [[ ! -d "$directory" && ! -z "$only_update" ]];then
-    fresh_tree=true
-elif [[ ! -w "$directory/Makefile" || ! -w "$directory/.config" ]];then
+elif [[ ! -w "$directory/Makefile" && -z "$fresh_tree" ]];then
     error unwritable_dir
 fi
 
@@ -391,9 +401,10 @@ debug "\"$directory\", \"$branch\" branch"
 # begin update process
 debug "Changing to \"$directory\""
 if [[ ! -z "$fresh_tree" ]];then
-    up=$(echo "$directory" | sed "s#${directory##*/}##")
-    cd "$up"
+    rm -rf "$directory" 2>&1 >/dev/null
+    mkdir "$directory" 2>&1 >/dev/null || err unable_to_make_diro
 fi
+cd "$directory" || err cant_change_dir
 
 # backup kernel configuration, if there is one
 method=menuconfig
@@ -408,10 +419,9 @@ if [[ -f .config && -z "$fresh_tree" ]];then
 fi
 
 # decide if we want to clone, or reset an existing repo
-if [[ ! -d ".git" || "$fresh_tree" ]];then
+if [[ ! -z "$fresh_tree" ]];then
     if ask "There doesn't appear to be a git repository here. Make a new one?"; then
-        mkdir "$directory" >/dev/null 2>&1; cd "$directory"
-        git clone "$kernel_repo" .
+        git clone --depth=1 "$kernel_repo" "."
     else
         error no_git_repo
     fi
