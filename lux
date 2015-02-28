@@ -1,5 +1,5 @@
 #!/bin/bash
-# lux, a Linux kernel updater - version 0.2.10
+# lux, a Linux kernel updater - version 0.2.11
 # Usage: lux [-dhiquv] [-t <version>] [directory]
 # Update a kernel source tree located in [directory] to the latest version, and
 # then configure and install it.
@@ -315,7 +315,7 @@ directory=$(realpath "$directory")
 
 while [[ $# -ne 0 ]];do
     arg="$1"
-    if [[ -d "$arg" ]];then
+    if [[ -d "$arg" ]] || echo "$arg" | egrep '^(.*/)([^/]*)$';then # looks like a dir
         directory="$arg"
     fi
     arg="$1"
@@ -377,8 +377,11 @@ done
 
 trap 'clean_up' 2 3 15
 
-if [[ ! -d "$directory" ]];then
+if [[ ! -d "$directory" && -z "$only_update" ]];then
+    echo "If \"$directory\" needs to have a fresh kernel tree, run \`lux -u\`."
     error nonexistant_dir
+elif [[ ! -d "$directory" && ! -z "$only_update" ]];then
+    fresh_tree=true
 elif [[ ! -w "$directory/Makefile" || ! -w "$directory/.config" ]];then
     error unwritable_dir
 fi
@@ -387,12 +390,15 @@ debug "\"$directory\", \"$branch\" branch"
 
 # begin update process
 debug "Changing to \"$directory\""
-cd "$directory"
+if [[ ! -z "$fresh_tree" ]];then
+    up=$(echo "$directory" | sed "s#${directory##*/}##")
+    cd "$up"
+fi
 
 # backup kernel configuration, if there is one
 method=menuconfig
 
-if [[ -f .config ]];then
+if [[ -f .config && -z "$fresh_tree" ]];then
     tmp_config_file=$(mktemp "$tmp_dir/.lux-$$-configXXXXXX")
     cat ".config" > "$tmp_config_file"
     debug "Made config backup at \"$tmp_config_file\""
@@ -402,9 +408,10 @@ if [[ -f .config ]];then
 fi
 
 # decide if we want to clone, or reset an existing repo
-if [[ ! -d ".git" ]];then
+if [[ ! -d ".git" || "$fresh_tree" ]];then
     if ask "There doesn't appear to be a git repository here. Make a new one?"; then
-        git clone "$kernel_repo" "$directory"
+        mkdir "$directory" >/dev/null 2>&1; cd "$directory"
+        git clone "$kernel_repo" .
     else
         error no_git_repo
     fi
