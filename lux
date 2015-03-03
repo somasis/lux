@@ -211,6 +211,9 @@ copyright() {
 }
 
 error() {
+    if [[ "$1" == "not_gonna_update" ]];then
+        exit "$err_not_gonna_update"
+    fi
     local error_code=$(eval echo "\$err_$*")
     stderr "Exiting due to \"%s\" (error code: %s)\n" "$*" "$error_code"
     exit $error_code
