@@ -286,7 +286,7 @@ ask() {
         ask_reply="$_default"
     else
         printf "%s [%s] " "$ask_text" "$_default_text"
-        read -n1 ask_reply; printf '\n'
+        read -n1 ask_reply; [[ "$ask_reply" ]] && printf '\n'
     fi
 
     ask_reply=$(echo "$ask_reply" | tr '[:upper:]' '[:lower:]')
@@ -438,6 +438,7 @@ if [[ -z "$only_install" ]];then
     debug "\$only_install is not set; updating kernel source tree."
 
     # checking for updates
+    printf "Checking for updates... "
     quiet_git reset --hard origin/master
     quiet_git checkout -f HEAD
     quiet_git pull -f "$(debug && echo -v)" origin master
@@ -449,6 +450,11 @@ fi
 
 if [[ "$only_update" ]];then
     debug "\$only_update is set, not installing."
+    if [[ "$target_version" == "$running_kernel_version" ]];then
+        printf "no updates available.\n"
+    else
+        printf "updates available.\n"
+    fi
     exit 0
 fi
 
@@ -467,7 +473,11 @@ fi
 if [[ "$need_update" ]];then
     ask "Do you want to update your kernel? (v$running_kernel_version --> v$target_version)" || error not_gonna_update
 elif [[ -z "$need_update" ]];then
-    ask "You don't need to update, you are running the latest version. Update anyway? (v$running_kernel_version)" || error not_gonna_update
+    if [[ "$quiet" ]];then
+        printf "No update needed.\n"
+        exit 0
+    fi
+    ask "You don't need to update, you are running the latest version. Update anyway? (v$running_kernel_version)" n && error not_gonna_update
 fi
 
 quiet_git reset --hard "v${target_version}"
