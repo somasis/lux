@@ -160,7 +160,7 @@ compile_log="${directory}/lux-compile.log"
 install_log="${directory}/lux-install.log"
 
 debug() {
-    if [[ "$verbose" ]];then
+    if [[ "$debug" ]];then
         if [[ ! -z "$@" ]];then
             stderr '%s: %s\n' "$me" "$@"
         else
@@ -211,13 +211,13 @@ copyright() {
 }
 
 error() {
-    local error_code=$(eval echo "\$err_$@")
-    stderr "Exiting due to \"%s\" (error code: %s)\n" "$@" "$error_code"
+    local error_code=$(eval echo "\$err_$*")
+    stderr "Exiting due to \"%s\" (error code: %s)\n" "$*" "$error_code"
     exit $error_code
 }
 
 invalid_arg() {
-    stderr "$me: invalid option -- '$@'\n"
+    stderr "$me: invalid option -- '$*'\n"
     error invalid_arg
 }
 
@@ -227,7 +227,7 @@ realpath() {
 
 git() {
     debug "executing \`git $*\`"
-    command -- git $* || { debug "git exited with error code $?"; error git; }
+    command -- git $@ || { debug "git exited with error code $?"; error git; }
 }
 
 quiet_git() {
@@ -235,7 +235,7 @@ quiet_git() {
     shift
     local args="$@"
 
-    if [[ "$verbose" ]];then
+    if [[ "$debug" ]];then
         eval "git $cmd $args"; return $?
     fi
     case "$cmd" in
@@ -265,8 +265,8 @@ is_actually_kernel_repo() {
 }
 
 make() {
-    debug "executing \`make $MAKEOPTS $@\`"
-    command make $MAKEOPTS "$@" || return "$?"
+    debug "executing \`make $MAKEOPTS $*\`"
+    command make $MAKEOPTS $@ || return "$?"
 }
 
 ask() {
@@ -286,7 +286,7 @@ ask() {
         read -n1 ask_reply; printf '\n'
     fi
 
-    ask_reply=$(echo "$ask_reply" | tr 'A-Z' 'a-z')
+    ask_reply=$(echo "$ask_reply" | tr '[:upper:]' '[:lower:]')
 
     if [[ -z "$ask_reply" ]];then
         ask_reply="$_default"
@@ -336,7 +336,7 @@ while [[ $# -ne 0 ]];do
                 target_version="$1"
                 ;;
             d)
-                verbose=true
+                debug=true
                 [[ "$quiet" ]] && { 
                     stderr "Either -q or -d, not both please.\n"
                     error only_one_action
@@ -344,7 +344,7 @@ while [[ $# -ne 0 ]];do
             ;;
             q)
                 quiet=true
-                [[ "$verbose" ]] && { 
+                [[ "$debug" ]] && { 
                     stderr "Either -q or -d, not both please.\n"
                     error only_one_action
                 }
@@ -401,8 +401,8 @@ debug "\"$directory\", \"$branch\" branch"
 # begin update process
 debug "Changing to \"$directory\""
 if [[ ! -z "$fresh_tree" ]];then
-    rm -rf "$directory" 2>&1 >/dev/null
-    mkdir "$directory" 2>&1 >/dev/null || err unable_to_make_diro
+    rm -rf "$directory" >/dev/null 2>&1
+    mkdir "$directory" >/dev/null 2>&1 || err unable_to_make_diro
 fi
 cd "$directory" || err cant_change_dir
 
@@ -414,7 +414,7 @@ if [[ -f .config && -z "$fresh_tree" ]];then
     cat ".config" > "$tmp_config_file"
     debug "Made config backup at \"$tmp_config_file\""
     has_existing_configuration=true
-    debug "Since you have an existing kernel config, so we'll use \`silentoldconfig\`"
+    debug "Since you have an existing kernel config, we'll use \`silentoldconfig\`"
     method=silentoldconfig
 fi
 
@@ -437,7 +437,7 @@ if [[ -z "$only_install" ]];then
     # checking for updates
     quiet_git reset --hard origin/master
     quiet_git checkout -f HEAD
-    quiet_git pull -f $(debug && echo -v) origin master
+    quiet_git pull -f "$(debug && echo -v)" origin master
     quiet_git fetch -p
 
     target_version=$(get_target_version)
@@ -471,7 +471,7 @@ quiet_git reset --hard "v${target_version}"
 
 make mrproper
 
-if [[ "$tmp_config_file" ]];then
+if [[ "$has_existing_configuration" ]];then
     debug "Writing config from backup"
     cp "$tmp_config_file" ".config"
 fi
