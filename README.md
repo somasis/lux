@@ -1,5 +1,25 @@
 # lux, a linux kernel updater
 
+A [ISC-licensed](LICENSE) kernel tree updater which takes care of getting a kernel tree,
+fetching incremental updates to it, configuration, and installation, in a
+simple process which takes out the grunt work from updating.
+
+## Requirements
+- [git](http://git-scm.com)
+- [help2man](https://www.gnu.org/software/help2man)
+- [Everything compiling a kernel entails](https://git.kernel.org/cgit/linux/kernel/git/stable/linux-stable.git/tree/Documentation/Changes)
+
+## Installation
+**Exherbo users, there is an exheres in ::somasis; sys-kernel/lux.**
+
+1. `git clone https://github.com/Somasis/lux` or [download a release] [1].
+2. `make PREFIX=/usr/local`
+3. `make install`
+
+## Usage
+After installation, just run `man lux`. If you prefer, you can also just do `lux -h`.
+
+## Rationale
 On Linux distributions, you often have to choose between a few options for
 keeping the kernel updated to the latest version:
 - binary packages which just have everything you could possibly need in it
@@ -55,19 +75,5 @@ are a developer, you'll probably be really angry about that.
 **Do not use `lux` if you are not prepared for it to reset the tree contents.**
 
 (kernel configurations, however, are backed up and used for upgrading)
-
-## Requirements
-- [git](http://git-scm.com)
-- [Everything compiling a kernel entails](https://git.kernel.org/cgit/linux/kernel/git/stable/linux-stable.git/tree/Documentation/Changes)
-
-## Installation
-**Exherbo users, there is an exheres in ::somasis; sys-kernel/lux.**
-
-1. `git clone https://github.com/Somasis/lux` or [download a release] [1].
-2. `make PREFIX=/usr/local`
-3. `make install`
-
-## Usage
-After installation, just run `man lux`. If you prefer, you can also just do `lux -h`.
 
 [1]: https://github.com/Somasis/lux/releases
