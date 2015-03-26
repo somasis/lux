@@ -114,12 +114,12 @@ default_kernel_install() {
 default_get_target_version() {
     local _target_version="$target_version"
     if [[ -z "$_target_version" ]];then
-        _target_version=$(git tag --sort v:refname | uniq | cut -d'v' -f2-)
-        if [[ $(echo "$_target_version" | wc -l) -lt 5 ]];then
-            # contact the remote for the tag list instead
+        _target_version=$(git tag --sort v:refname | sort -ud | cut -d'v' -f2-)
+        if [[ -f "${git_dir}/shallow" ]];then # is shallow...
+            # contact the remote for the tag list instead. shallow repos don't contain the full tag list
             _target_version=$(git ls-remote -t "$kernel_repo" | sort -V -t $'\t' -k 2 | sed 's#.*refs/tags/##;s#\^{}.*##' | cut -d'v' -f2-)
         fi
-        if [[ "$branch" == *stable* ]];then # if following stable branch you probably don't want an dash versions
+        if [[ "$branch" == *stable* ]];then # if following stable branch you probably don't want any dash versions
             debug "Filtering out versions ending with dashed sections, those are testing versions..."
             _target_version=$(echo "$_target_version" | grep -v -- '-.*')
         fi
@@ -430,9 +430,10 @@ if [[ ! -z "$fresh_tree" ]];then
     fi
 fi
 
+git_dir="$PWD/$(git rev-parse --git-dir)"
+
 is_actually_kernel_repo || { stderr "This is not a kernel source tree.\n" &&
 error not_a_kernel_repo; }
-
 
 if [[ -z "$only_install" ]];then
     debug "\$only_install is not set; updating kernel source tree."
@@ -481,6 +482,7 @@ elif [[ -z "$need_update" ]];then
     ask "You don't need to update, you are running the latest version. Update anyway? (v$running_kernel_version)" n && error not_gonna_update
 fi
 
+# if resetting to the tag fails, make sure it's fetched from the remote first
 if ! quiet_git reset --hard "v${target_version}";then
     quiet_git fetch --depth=1 "v${target_version}"
     quiet_git reset --hard "v${target_version}"
