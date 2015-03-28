@@ -117,7 +117,7 @@ default_get_target_version() {
         _target_version=$(git tag --sort v:refname | sort -ud | cut -d'v' -f2-)
         if [[ -f "${git_dir}/shallow" ]];then # is shallow...
             # contact the remote for the tag list instead. shallow repos don't contain the full tag list
-            _target_version=$(git ls-remote -t "$kernel_repo" | sort -V -t $'\t' -k 2 | sed 's#.*refs/tags/##;s#\^{}.*##' | cut -d'v' -f2-)
+            _target_version=$(git ls-remote -t "$kernel_repo" | sed 's#.*refs/tags/##;s#\^{}.*##' | sort -V | cut -d'v' -f2-)
         fi
         if [[ "$branch" == *stable* ]];then # if following stable branch you probably don't want any dash versions
             debug "Filtering out versions ending with dashed sections, those are testing versions..."
