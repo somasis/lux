@@ -140,6 +140,7 @@ err_no_git_repo=4
 err_unable_to_make_dir=5
 err_unwritable_dir=6
 err_cant_change_dir=7
+err_make=9
 err_not_gonna_update=10
 err_only_one_action=31
 err_only_one_output_level=32
@@ -269,7 +270,7 @@ is_actually_kernel_repo() {
 
 make() {
     debug "executing \`make $MAKEOPTS $*\`"
-    command make $MAKEOPTS $@ || return "$?"
+    command make $MAKEOPTS $@ || { debug "\`make $MAKEOPTS $@\` exited with error code $?"; error make; }
 }
 
 ask() {
