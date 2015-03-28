@@ -483,11 +483,8 @@ elif [[ -z "$need_update" ]];then
     ask "You don't need to update, you are running the latest version. Update anyway? (v$running_kernel_version)" n && error not_gonna_update
 fi
 
-# if resetting to the tag fails, make sure it's fetched from the remote first
-if ! quiet_git reset --hard "v${target_version}";then
-    quiet_git fetch --depth=1 "v${target_version}"
-    quiet_git reset --hard "v${target_version}"
-fi
+quiet_git fetch --depth=1 origin "v${target_version}"
+quiet_git reset --hard "FETCH_HEAD"
 
 make mrproper
 
