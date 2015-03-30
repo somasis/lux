@@ -1,5 +1,6 @@
-PREFIX?=/usr
-
+BINPREFIX?=/usr/bin
+MANPREFIX?=/usr/share/man/man1
+ETCPREFIX?=/etc
 
 DESCRIPTION=a Linux kernel updater
 HELP2MAN=help2man -n "$(DESCRIPTION)" -N --version-option -v --help-option -h
@@ -13,14 +14,14 @@ man:
 	$(HELP2MAN) -o lux.1 ./lux
 
 install:
-	mkdir -p $(DESTDIR)$(PREFIX)/bin
-	install lux $(DESTDIR)$(PREFIX)/bin
-	mkdir -p $(DESTDIR)$(PREFIX)/share/man/man1
-	install lux.1 $(DESTDIR)$(PREFIX)/share/man/man1
-	mkdir -p $(DESTDIR)/etc
-	install lux.conf $(DESTDIR)/etc/
+	mkdir -p $(DESTDIR)$(BINPREFIX)
+	install lux $(DESTDIR)$(BINPREFIX)/lux
+	mkdir -p $(DESTDIR)$(MANPREFIX)
+	install lux.1 $(DESTDIR)$(MANPREFIX)/lux.1
+	mkdir -p $(DESTDIR)$(ETCPREFIX)
+	install lux.conf $(DESTDIR)$(ETCPREFIX)/lux.conf
 
 uninstall:
-	rm $(DESTDIR)$(PREFIX)/bin/lux
-	rm $(DESTDIR)$(PREFIX)/share/man/man1/lux.1
-	rm $(DESTDIR)/etc/lux.conf
+	rm $(DESTDIR)$(BINPREFIX)/lux
+	rm $(DESTDIR)$(MANPREFIX)/lux.1
+	rm $(DESTDIR)$(ETCPREFIX)/lux.conf
