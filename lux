@@ -151,7 +151,7 @@ err_kernel_modules_install_failed=66
 err_kernel_failed_to_install=67
 err_ctrl_c=127
 
-running_kernel_version=$(uname -r | cut -d'-' -f1 | sed 's/\.0$//')
+running_kernel_version=$(uname -r | sed 's#-.*##;s#[^0-9.]##g')
 
 [[ -f "${config:-/etc/lux.conf}" ]] && . /etc/lux.conf
 
