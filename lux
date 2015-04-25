@@ -440,7 +440,7 @@ if [[ -z "$only_install" ]];then
     debug "\$only_install is not set; updating kernel source tree."
 
     # checking for updates
-    printf "Retriving updates... "
+    printf "Retrieving updates... "
     quiet_git reset --hard origin/master
     quiet_git checkout -f HEAD
     # if we don't specify depth, `git` tries getting the whole tree!
