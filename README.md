@@ -13,7 +13,7 @@ simple process which takes out the grunt work from updating.
 **Exherbo users, there is an exheres in ::somasis; sys-kernel/lux.**
 
 1. `git clone https://github.com/Somasis/lux` or [download a release] [1].
-2. `make PREFIX=/usr/local`
+2. `make`
 3. `make install`
 
 ## Usage
