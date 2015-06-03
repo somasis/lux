@@ -1,6 +1,6 @@
 # lux, a linux kernel updater
 
-A [ISC-licensed](LICENSE) kernel tree updater which takes care of getting a kernel tree,
+An [ISC-licensed](LICENSE) kernel tree updater which takes care of getting a kernel tree,
 fetching incremental updates to it, configuration, and installation, in a
 simple process which takes out the grunt work from updating.
 
