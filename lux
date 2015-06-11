@@ -443,6 +443,7 @@ if [[ -z "$only_install" ]];then
     printf "Retrieving updates... "
     quiet_git reset --hard origin/master
     quiet_git checkout -f HEAD
+    quiet_git reset --hard origin/master # prevent merge conflicts
     # if we don't specify depth, `git` tries getting the whole tree!
     quiet_git pull -f "$(debug && echo -v)" --depth=1 origin master
     quiet_git fetch -p
