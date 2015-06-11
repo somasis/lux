@@ -1,5 +1,5 @@
 #!/bin/bash
-# lux, a Linux kernel updater - version 0.4.6
+# lux, a Linux kernel updater - version 0.4.6.1
 # Usage: lux [-dhiquv] [-t <version>] [directory]
 # Update a kernel source tree located in [directory] to the latest version, and
 # then configure and install it.
