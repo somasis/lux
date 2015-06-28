@@ -190,7 +190,8 @@ err_not_gonna_update=10
 err_invalid_target_version=11
 err_only_one_action=31
 err_only_one_output_level=32
-err_not_a_kernel_repo=63
+err_not_a_kernel_repo=62
+err_kernel_clean_failed=63
 err_kernel_configuration_failed=64
 err_kernel_compilation_failed=65
 err_kernel_modules_install_failed=66
@@ -525,7 +526,7 @@ fi
 quiet_git fetch --depth=1 origin "${target_version}"
 quiet_git reset --hard "FETCH_HEAD"
 
-make mrproper
+make mrproper || error kernel_clean_failed
 
 if [[ "$has_existing_configuration" ]];then
     debug "Writing config from backup"
