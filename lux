@@ -97,14 +97,13 @@ default_kernel_patch() {
 
 default_kernel_configure() {
     # look at the .config backup logic to see how $method is determined
-    if [[ "$method" == "silentoldconfig" ]];then
+    if [[ "$method" == "olddefconfig" ]];then
         if ask "Do you want to configure the kernel?" n;then
-            method=$method
+            method=olddefconfig
         else
             method=menuconfig
         fi
     fi
-
     make $method || error kernel_configuration_failed
 }
 
@@ -457,8 +456,8 @@ if [[ -f .config && -z "$fresh_tree" ]];then
     cat ".config" > "$tmp_config_file"
     debug "Made config backup at \"$tmp_config_file\""
     has_existing_configuration=true
-    debug "Since you have an existing kernel config, we'll use \`silentoldconfig\`"
-    method=silentoldconfig
+    debug "Since you have an existing kernel config, we'll use \`oldoldconfig\`"
+    method=olddefconfig
 fi
 
 # decide if we want to clone, or reset an existing repo
