@@ -1,5 +1,5 @@
 #!/bin/bash
-# lux, a Linux kernel updater - version 0.4.6.1
+# lux, a Linux kernel updater - version 0.4.7
 # Usage: lux [-dhiquv] [directory]
 # Update a kernel source tree located in [directory] to the latest version, and
 # then configure and install it.
@@ -65,22 +65,34 @@ kernel_repo="https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable
 #
 target=tag:latest
 
+# Phases that are ran after updating the tree
+
+## kernel_prepare - First phase, turning off resource-heavy programs, etc
+kernel_prepare() {
+    default_kernel_prepare "$@"
+}
+
+## kernel_patch - Second phase, things like custom patches, etc
 kernel_patch() {
     default_kernel_patch "$@"
 }
 
+## kernel_configure - Third phase, probably shouldn't mess with
 kernel_configure() {
     default_kernel_configure "$@"
 }
 
+## kernel_compile - Fourth phase, probably shouldn't mess with
 kernel_compile() {
     default_kernel_compile "$@"
 }
 
+## kernel_install - Fifth phase, custom install procedures perhaps
 kernel_install() {
     default_kernel_install "$@"
 }
 
+## kernel_post_install - Last phase, success messages, rebooting, etc
 kernel_post_install() {
     default_kernel_post_install "$@"
 }
@@ -90,6 +102,15 @@ kernel_post_install() {
 #
 # Don't edit anything past here.
 #
+
+default_kernel_prepare() {
+    # fix string so it doesn't look funny if you're running the same version as what you're updating to
+    if [[ "${target_version}" != [0-9].[0-9].0 ]];then
+        target_version=${target_version}.0
+    fi
+    printf "Upgrading %s --> %s, press ^C to abort.\n\n" "$running_kernel_version" "$target_version"
+    sleep 10
+}
 
 default_kernel_patch() {
     :
@@ -118,7 +139,7 @@ default_kernel_install() {
 }
 
 default_kernel_post_install() {
-    printf 'Finished upgrading kernel. (v%s --> v%s)\n\n' "$running_kernel_version" "$target_version"
+    printf 'Finished upgrading kernel. (%s --> %s)\n\n' "$running_kernel_version" "$target_version"
 }
 
 get_target_version() {
@@ -206,9 +227,11 @@ config="/etc/lux.conf"
 [[ -f "${config}" ]] && . "${config}"
 
 directory="${directory:-/usr/src/linux}"
+prepare_log="${directory}/lux-prepare.log"
 patch_log="${directory}/lux-patch.log"
 compile_log="${directory}/lux-compile.log"
 install_log="${directory}/lux-install.log"
+post_install_log="${directory}/lux-post-install.log"
 
 debug() {
     if [[ "$debug" ]];then
@@ -320,7 +343,11 @@ is_actually_kernel_repo() {
 
 make() {
     debug "executing \`make $MAKEOPTS $*\`"
-    command make $MAKEOPTS $@ || { debug "\`make $MAKEOPTS $@\` exited with error code $?"; error make; }
+    command make $MAKEOPTS $@
+    if [[ $? -ne 0 ]];then
+        debug "\`make $MAKEOPTS $@\` exited with error code $?"
+        return $?
+    fi
 }
 
 ask() {
@@ -533,15 +560,16 @@ if [[ "$has_existing_configuration" ]];then
     cat "$tmp_config_file" > ".config"
 fi
 
-printf "Upgrading v%s --> v%s, press ^C to abort.\n" "$running_kernel_version" "$target_version"
-sleep 10
+touch "$prepare_log" "$patch_log" "$compile_log" "$install_log" "$post_install_log" >/dev/null 2>&1
 
-touch "$patch_log" "$compile_log" "$install_log" "$post_install_log" >/dev/null 2>&1
-
+[[ ! -w "$prepare_log"   ]] && prepare_log="/dev/null"
 [[ ! -w "$patch_log"   ]] && patch_log="/dev/null"
 [[ ! -w "$compile_log" ]] && compile_log="/dev/null"
 [[ ! -w "$install_log" ]] && install_log="/dev/null"
 [[ ! -w "$post_install_log" ]] && post_install_log="/dev/null"
+
+debug "Running \`kernel_prepare\`; logging to \"$prepare_log\""
+kernel_prepare 2>&1 | tee -a "$prepare_log"
 
 debug "Running \`kernel_patch\`; logging to \"$patch_log\""
 kernel_patch 2>&1 | tee -a "$patch_log"
