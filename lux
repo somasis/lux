@@ -530,7 +530,7 @@ make mrproper || error kernel_clean_failed
 
 if [[ "$has_existing_configuration" ]];then
     debug "Writing config from backup"
-    cp "$tmp_config_file" ".config"
+    cat "$tmp_config_file" > ".config"
 fi
 
 printf "Upgrading v%s --> v%s, press ^C to abort.\n" "$running_kernel_version" "$target_version"
