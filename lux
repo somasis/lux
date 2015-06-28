@@ -81,6 +81,10 @@ kernel_install() {
     default_kernel_install "$@"
 }
 
+kernel_post_install() {
+    default_kernel_post_install "$@"
+}
+
 #
 # End of configuration variables.
 #
@@ -111,13 +115,11 @@ default_kernel_compile() {
 default_kernel_install() {
     make modules_install || error kernel_modules_install_failed
     image="$directory/$(make image_name)"
-    old_kernel=$(file /boot/kernel | sed 's/.*, version /v/;s/ , .*//')
-    old_kernel_ver=$(echo "$old_kernel" | cut -d' ' -f1 | cut -d'v' -f2)
-    new_kernel=$(file "$image" | sed 's/.*, version /v/;s/ , .*//')
-    debug "Backing up old kernel... \"%s\"" "$old_kernel"
-    cp -fv "/boot/kernel" "/boot/kernel-$old_kernel_ver"
-    debug "Installing new kernel... \"%s\"" "$new_kernel"
-    cp -fv "$image" "/boot/kernel" || error kernel_failed_to_install
+    make install || error kernel_failed_to_install
+}
+
+default_kernel_post_install() {
+    printf 'Finished upgrading kernel. (v%s --> v%s)\n\n' "$running_kernel_version" "$target_version"
 }
 
 get_target_version() {
@@ -534,11 +536,12 @@ fi
 printf "Upgrading v%s --> v%s, press ^C to abort.\n" "$running_kernel_version" "$target_version"
 sleep 10
 
-touch "$patch_log" "$compile_log" "$install_log" >/dev/null 2>&1
+touch "$patch_log" "$compile_log" "$install_log" "$post_install_log" >/dev/null 2>&1
 
 [[ ! -w "$patch_log"   ]] && patch_log="/dev/null"
 [[ ! -w "$compile_log" ]] && compile_log="/dev/null"
 [[ ! -w "$install_log" ]] && install_log="/dev/null"
+[[ ! -w "$post_install_log" ]] && post_install_log="/dev/null"
 
 debug "Running \`kernel_patch\`; logging to \"$patch_log\""
 kernel_patch 2>&1 | tee -a "$patch_log"
@@ -552,4 +555,5 @@ kernel_compile 2>&1 | tee -a "$compile_log"
 debug "Running \`kernel_install\`; logging to \"$install_log\""
 kernel_install 2>&1 | tee -a "$install_log"
 
-printf 'Finished upgrading kernel. (v%s --> v%s)\n\n' "$running_kernel_version" "$target_version"
+debug "Running \`kernel_post_install\`; logging to \"$post_install_log\""
+kernel_post_install 2>&1 | tee -a "$post_install_log"
