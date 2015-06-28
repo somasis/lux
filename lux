@@ -4,7 +4,7 @@
 # Update a kernel source tree located in [directory] to the latest version, and
 # then configure and install it.
 #
-# If unspecified and not set in lux.conf, [directory] is /usr/src/linux-stable
+# If unspecified and not set in lux.conf, [directory] is /usr/src/linux
 #
 # Options:
 #      -f                       get a fresh tree
