@@ -40,24 +40,30 @@
 # You can replace any of these values/functions with your own custom stuff in lux.conf
 #
 
-# Optimize for multi-core, use a thread for each core + 2
+# MAKEOPTS  Options which will be passed to all `make` invocations.
+#           This might be things like a specific $CC, or $CROSS_COMPILE host.
+#           By default, we tell `make` to use a compiler thread for each processor, plus 2.
+#
 MAKEOPTS="-j$(( $(nproc) + 2 ))"
 
-branch=master
-kernel_repo="https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git"
+# directory The directory that should be used for storing the kernel tree at.
+#           If it does not exist at the time of lux's run, lux will tell you to use -f to
+#           create the directory and get a fresh kernel tree.
+#
 directory=/usr/src/linux
 
-# target -  Target to upgrade to. By default, this is the latest tag. (probably what you want)
-#           You can set a specific tag to upgrade to with "tag:<tag>",
-#           or set a certain commit with "commit:<commit hash>".
+# branch    The branch that should be used for updating from. If unset, assume whatever
+#           the current checked out branch is; and if we have no tree yet, go with whatever
+#           the remote gives us.
 #
-#           You can also set the HEAD of the git repository by setting it to "HEAD",
-#           which does the same as "commit:HEAD".
+branch=master
+kernel_repo="https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git"
+
+# target    Target to upgrade to. By default, this is the latest tag. (probably what you want)
+#           You can set a specific tag to upgrade to with "target=tag:<tag>",
+#           Or, you can set a certain commit/etc with "target=<commit hash>".
 #
 target=tag:latest
-
-tmp_dir="/tmp"
-config="/etc/lux.conf"
 
 kernel_patch() {
     default_kernel_patch "$@"
@@ -191,6 +197,9 @@ err_kernel_failed_to_install=67
 err_ctrl_c=127
 
 running_kernel_version=v$(uname -r | sed 's#-.*##;s#[^0-9.]##g')
+
+tmp_dir=${TMPDIR:-/tmp}
+config="/etc/lux.conf"
 
 [[ -f "${config}" ]] && . "${config}"
 
