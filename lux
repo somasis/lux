@@ -146,7 +146,7 @@ get_target_version() {
     case "$target" in
         tag:*)
             if [[ "${target##tag:}" == "latest" ]];then
-                _target_version=$(git tag --sort v:refname | sort -ud | cut -d'v' -f2-)
+                _target_version=$(git tag --sort v:refname | sort -ud)
                 if [[ -f "${git_dir}/shallow" ]];then # is shallow...
                     # contact the remote for the tag list instead. shallow repos don't contain the full tag list
                     _target_version=$(git ls-remote -t "$kernel_repo" | sed 's#.*refs/tags/##;s#\^{}.*##' | cut -d'v' -f2- | tr '.' ' ' | sort -k 1n,1n -k 2n,2n -k 3n,3n -k 4n,4n | tr ' ' '.')
@@ -159,6 +159,9 @@ get_target_version() {
             else
                 _target_version=${target##tag:}
             fi
+            while [[ ${_target_version:0:1} == v ]];do
+                _target_version=${_target_version:1}
+            done
             if [[ "${_target_version}" == [0-9].[0-9] ]];then
                 _target_version=${_target_version}.0
             fi
