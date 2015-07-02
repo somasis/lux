@@ -526,7 +526,7 @@ if [[ "$only_update" ]];then
     exit 0
 fi
 
-[[ -z "$target_version" ]] && target_version=$(get_target_version)
+[[ -z "$target_version" ]] && target_version=${running_kernel_version}
 debug "Installing kernel source tree."
 
 # check if repository version is same as running
