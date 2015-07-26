@@ -541,7 +541,7 @@ elif [[ -z "$need_update" ]];then
         printf "No update needed.\n"
         exit 0
     fi
-    ask "You don't need to update, you are running the latest version. Update anyway? ($running_kernel_version)" n && error not_gonna_update
+    ask "You are running the latest version. Update anyway? ($running_kernel_version)" n && error not_gonna_update
 fi
 
 # undo the version magic we did back in get_target_version earlier
