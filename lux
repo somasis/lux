@@ -104,10 +104,6 @@ kernel_post_install() {
 #
 
 default_kernel_prepare() {
-    # fix string so it doesn't look funny if you're running the same version as what you're updating to
-    if [[ "${target_version}" != [0-9].[0-9].0 ]];then
-        target_version=${target_version}.0
-    fi
     printf "Upgrading %s --> %s, press ^C to abort.\n\n" "$running_kernel_version" "$target_version"
     sleep 10
 }
