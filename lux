@@ -471,9 +471,9 @@ debug "\"$directory\", \"$branch\" branch"
 debug "Changing to \"$directory\""
 if [[ ! -z "$fresh_tree" ]];then
     rm -rf "$directory" >/dev/null 2>&1
-    mkdir "$directory" >/dev/null 2>&1 || err unable_to_make_diro
+    mkdir "$directory" >/dev/null 2>&1 || error unable_to_make_dir
 fi
-cd "$directory" || err cant_change_dir
+cd "$directory" || error cant_change_dir
 
 # backup kernel configuration, if there is one
 method=menuconfig
