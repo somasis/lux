@@ -490,7 +490,7 @@ fi
 # decide if we want to clone, or reset an existing repo
 if [[ ! -z "$fresh_tree" ]];then
     if ask "There doesn't appear to be a git repository here. Make a new one?"; then
-        git clone --depth=1 "$kernel_repo" "."
+        git clone --depth=1 "$kernel_repo" "${PWD}" # we could just use '.' but it looks funny seeing "Cloning into '.'..."
     else
         error no_git_repo
     fi
