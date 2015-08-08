@@ -517,7 +517,7 @@ if [[ "$only_update" ]];then
     if [[ "$target_version" == "$running_kernel_version" ]];then
         printf "no updates available.\n"
     else
-        printf "version ${target_version} available.\n"
+        printf "version %s available\n" "${target_version}"
     fi
     exit 0
 fi
