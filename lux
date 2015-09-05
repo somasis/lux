@@ -182,11 +182,11 @@ git_pull() {
         quiet_git branch "${branch}"
     fi
     quiet_git reset --hard origin/${branch}
-    quiet_git checkout -f HEAD
-    quiet_git reset --hard origin/${branch} # prevent merge conflicts
+    nonfatal quiet_git checkout -f HEAD || quiet_git reset --hard origin/${branch} # prevent merge conflicts
     # if we don't specify depth, `git` tries getting the whole tree!
-    quiet_git pull -f "$(debug && echo -v)" --depth=1 origin ${branch}
+    nonfatal quiet_git pull -f "$(debug && echo -v)" --depth=1 origin ${branch} || quiet_git reset --hard origin/${branch} # prevent merge conflicts
     quiet_git fetch -p
+    quiet_git reset --hard origin/${branch}
 }
 
 get_makefile_ver() {
@@ -283,13 +283,19 @@ copyright() {
     done
 }
 
+nonfatal() {
+    nonfatal=1
+    eval "$@"
+    nonfatal=
+}
+
 error() {
     if [[ "$1" == "not_gonna_update" ]];then
         exit "$err_not_gonna_update"
     fi
     local error_code=$(eval echo "\$err_$*")
-    stderr "Exiting due to \"%s\" (error code: %s)\n" "$*" "$error_code"
-    exit $error_code
+    [[ "$nonfatal" ]] || stderr "Exiting due to \"%s\" (error code: %s)\n" "$*" "$error_code"
+    [[ "$nonfatal" ]] || exit $error_code
 }
 
 invalid_arg() {
