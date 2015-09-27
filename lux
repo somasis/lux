@@ -550,6 +550,7 @@ elif [[ -z "$need_update" ]];then
     ask "You are running the latest version. Update anyway? ($running_kernel_version)" n && error not_gonna_update
 fi
 
+old_target=${target_version}
 # undo the version magic we did back in get_target_version earlier
 if [[ "${target_version}" == *.0 ]];then
     target_version=${target_version%.0}
@@ -558,9 +559,7 @@ fi
 quiet_git fetch --depth=1 origin "${target_version}"
 quiet_git reset --hard "FETCH_HEAD"
 
-if [[ "${target_version}" == *.* ]];then
-    target_version=${target_version}.0
-fi
+target_version=${old_target}
 
 make mrproper || error kernel_clean_failed
 
