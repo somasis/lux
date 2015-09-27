@@ -44,7 +44,7 @@
 #           This might be things like a specific $CC, or $CROSS_COMPILE host.
 #           By default, we tell `make` to use a compiler thread for each processor, plus 2.
 #
-MAKEOPTS="-j$(( $(nproc) + 2 ))"
+MAKEOPTS="-j$(( $(nproc 2>/dev/null || grep -c processor /proc/cpuinfo) + 2 ))"
 
 # directory The directory that should be used for storing the kernel tree at.
 #           If it does not exist at the time of lux's run, lux will tell you to use -f to
