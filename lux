@@ -176,7 +176,7 @@ get_target_version() {
 }
 
 git_pull() {
-    if [[ -z "${branch}" ]] || git rev-parse --verify "${branch}" >/dev/null 2>&1;then
+    if [[ -z "${branch}" ]] || nonfatal git rev-parse --verify "${branch}" >/dev/null 2>&1;then
         branch=$(git rev-parse --abbrev-ref HEAD)
     else
         quiet_git branch "${branch}"
