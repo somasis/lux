@@ -41,7 +41,7 @@
 #
 
 # MAKEOPTS  Options which will be passed to all `make` invocations.
-#           This might be things like a specific $CC, or $CROSS_COMPILE host.
+#           This might be things like a specific $CC, or $CROSS_COMPILE target.
 #           By default, we tell `make` to use a compiler thread for each processor, plus 2.
 #
 MAKEOPTS="-j$(( $(nproc 2>/dev/null || grep -c processor /proc/cpuinfo) + 2 ))"
