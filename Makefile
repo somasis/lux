@@ -10,7 +10,6 @@ HELP2MAN=help2man -n "$(DESCRIPTION)" -N --version-option -v --help-option -h
 all: clean prepare man
 
 clean:
-	rm -rf $(DESTDIR)$(BINDIR)/lux $(DESTDIR)$(MANDIR)/lux.1 $(DESTDIR)$(ETCDIR)/lux.conf
 	rm -f lux.1 lux
 	mv lux.orig lux
 
