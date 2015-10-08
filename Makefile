@@ -17,7 +17,7 @@ prepare:
 	cp lux lux.orig
 	sed -e "s/@@VERSION@@/$(VERSION)/g" -i lux
 
-man:
+man: prepare
 	$(HELP2MAN) -o lux.1 ./lux
 
 install: prepare man
