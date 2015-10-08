@@ -114,7 +114,22 @@ default_kernel_patch() {
 
 default_kernel_configure() {
     # look at the .config backup logic to see how $method is determined
-    if [[ "$method" == "olddefconfig" ]];then
+    if [[ -z "${skip_default_kernel_config_check}" && ! -f "${directory}/.config" ]];then
+        stderr "No .config exists in \"${directory}\".\n"
+        if [[ ! -f /proc/config.gz && -f "${LIBDIR:-/lib}"/modules/$(uname -r)/kernel/kernel/configs.ko* ]];then
+            debug "Attempting to load /proc/config.gz module. (configs.ko)"
+            modprobe configs
+            default_kernel_configure "$@"
+        elif [[ -f /proc/config.gz ]] && ask "Do you want to use the config at /proc/config.gz?" y;then
+            debug "gunzip -c /proc/config.gz > \"${directory}\"/.config"
+            gunzip -c /proc/config.gz > "${directory}"/.config
+            method=olddefconfig
+        else
+            stderr "Using default configuration.\n"
+            method=defconfig
+        fi
+        skip_default_kernel_config_check=true default_kernel_configure "$@"
+    elif [[ "$method" == "olddefconfig" ]];then
         if ask "Do you want to configure the kernel?" n;then
             method=olddefconfig
         else
