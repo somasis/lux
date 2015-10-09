@@ -1,0 +1,114 @@
+# lux(1) -- a Linux kernel updater
+
+## SYNOPSIS
+
+`lux` [-dhiquvf] [<directory>]
+
+## DESCRIPTION
+
+`lux` updates a kernel source tree located in <directory> to the latest
+version, or to a specific target in `lux.conf`, then installs it.
+
+It utilizes git(1) for updating, and in addition, uses its shallow clone
+feature to reduce the amount of data that is fetched when updating, making
+it as fast, if not faster than using a tarball for updating.
+
+## OPTIONS
+
+- `-f`:
+    Get a fresh tree from the remote specified in `lux.conf`. This is
+    equivalent to if you cloned a tree into the <directory> yourself.
+
+    If the configured <directory> does not exist, or does not contain a
+    git(1) repository that looks like a Linux kernel tree, it will remove
+    the directory and clone a new tree to it.
+
+- `-u`:
+    Only update the kernel source, don't do anything related to upgrading
+    the installed version of the kernel.
+
+- `-i`:
+    Only install the kernel, don't do anything related to updating the
+    kernel's tree.
+
+- `-q`:
+    Quiet, or non-interactive mode. This mode doesn't ask any questions,
+    and causes `lux` to use the default answers, which try to be sane as
+    possible.
+
+    See [QUIET MODE][] for more details.
+
+- `-d`:
+    Debug mode. This causes `lux` to be a bit noisey, and just tells you
+    about assumptions it makes, and what it's doing when it would normally
+    suppress git(1)'s output, or otherwise be quiet.
+
+    If you're hitting really strange issues, and are creating a bug,
+    you might wish to run `lux` with `bash -x` instead. `bash -x lux`
+
+- `-v`:
+    Print current `lux` version, and the copyright/license.
+
+## QUIET MODE
+
+`lux` makes great effort to make it easy to update the kernel when it's
+already configured how you like it, and as such `-q` makes a bit of
+assumptions based on some rules of the system it's running on.
+
+- Cloning a fresh copy of the kernel source, if `-f` is specified.
+- Upgrading the kernel, if the target version is not being ran.
+- The logic for `default_kernel_configure` tries very hard to
+  be automatic whenever possible. Here's what it is:
+    - If <directory>/.config does not exist...
+        - Try using the running kernel's configuration.
+        - If that's not possible, use the kernel's default config.
+    - If <directory>/.config does exist...
+        - Use it, and update the config with new options set to
+          their default, retaining the value of options that are
+          already set. (`make olddefconfig`)
+- Compile.
+- Install, using `make install`.
+  As of writing, the kernel's Makefile calls to installkernel(8),
+  which is usually included with systems that have debianutils or
+  have systemd installed.
+
+## FILES
+
+- /etc/lux.conf:
+    The default `lux.conf` location. See lux.conf(5) for details on that.
+
+- /usr/src/linux:
+    The default location for a kernel tree.
+
+## BUGS
+
+Hopefully none! In the extremely unlikely case that your wonderful author
+is wrong though, send them to <https://github.com/somasis/lux/issues>.
+
+## SEE ALSO
+
+lux.conf(5)
+
+## COPYRIGHT
+
+Written by Kylie McClain <<somasis@exherbo.org>>
+
+<https://github.com/somasis/lux>
+
+## LICENSE
+
+Licensed under the ISC license.
+
+Copyright (c) 2014-2015 Kylie McClain <somasis@exherbo.org>
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted, provided that the above
+copyright notice and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.

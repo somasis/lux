@@ -1,0 +1,135 @@
+# lux.conf(5) -- configuration file for the lux kernel updater
+
+## SYNOPSIS
+
+/etc/lux.conf
+
+## DESCRIPTION
+
+lux(1) is configured through `lux.conf`'s variables and functions which
+adhere to bash(1) syntax, allowing for custom logic and user-defined
+functionality.
+
+lux(1) uses functions for it's main functionality, and as such, you can
+replace it's kernel updating/upgrading functionality with your own custom
+functions, if desired. This allows for essentially endless possibilities,
+so long as it can be done from a bash(1) shell.
+
+## VARIABLES
+
+- `MAKEOPTS`:
+    `MAKEOPTS` is a variable that is passed to all invocations of `make`.
+
+    The default `MAKEOPTS` value is "-j<number of processors>", to allow
+    for taking advantage of the power of systems with multiple processors.
+
+    Other variables that you may be interested in (not a complete list, see
+    the kernel's Makefile for more):
+        - `V=<0|1|2>`:
+            Verbosity level of the compilation process.
+        - `O=<directory>`:
+            Where kbuild stores files that are the output of compilation.
+        - `ARCH=<architecture>`:
+            Architecture to build for.
+        - `HOSTCC=<C compiler>`:
+            C compiler (such as gcc(1) or clang(1)) which can be ran on the
+            host.
+        - `CROSS_COMPILE=<CHOST>`
+            Triplet for the target you're compiling for; this acts as a
+            prefix for all the toolchain programs used.
+
+- `directory`:
+    The directory that should be used for storing the kernel tree at.
+    If it does not exist, `lux` will tell you to use -f to create it.
+
+- `branch`:
+    The branch that will be checked out when updating. If unset, `lux` will
+    use whatever is already checked out, or whatever the default branch the
+    remote gives out is.
+
+- `kernel_repo`:
+    The remote URL used for cloning and pulling.
+
+    By default, this is
+    <https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git>
+
+- `target`:
+    Target version to update to. By default, this is the latest tag, which
+    is probably what you want. Otherwise, you can set a specific tag to
+    upgrade to with `tag:<<tag>>`, or any other git(1) object by setting it
+    to an object.
+
+    Examples: `target=tag:latest`, `target=tag:v4.0.3`, `target=HEAD`
+
+## PHASES
+
+Phases are what do the actual work of preparing, patching, configuring,
+compiling, installing, etc. in `lux`. Here, they are listed in the order
+which they are ran.
+
+All default phase functions can be called with `default_<phase>`
+
+- `kernel_prepare`:
+    By default, just prints
+    "Upgrading <running version> -> <target version>, press ^C to abort.",
+    then sleeps for 10 seconds.
+
+    Examples of usage could be sending a notification with notify-send(1),
+    stopping resource-intensive programs, logging something to syslog.
+
+- `kernel_patch`:
+    Does nothing by default.
+
+    Examples of usage should be obvious.
+
+- `kernel_configure`:
+    By default, the most complicated phase. It asks the user if they would
+    like to configure, and then determines what Makefile target to run.
+
+- `kernel_compile`:
+    Runs `make`.
+
+- `kernel_install`:
+    Runs `make modules_install`, then `make install`.
+
+- `kernel_post_install`:
+    By default, just prints
+    "Finished upgrading kernel. (<running version> --> <target version>)".
+
+    The author uses this for updating EFI boot entries.
+
+## FILES
+
+- /etc/lux.conf:
+    The default `lux.conf` location. See lux.conf(5) for details on that.
+
+- /usr/src/linux:
+    The default location for a kernel tree.
+
+## SEE ALSO
+
+lux(1)
+
+## COPYRIGHT
+
+Written by Kylie McClain <<somasis@exherbo.org>>
+
+<https://github.com/somasis/lux>
+
+## LICENSE
+
+Licensed under the ISC license.
+
+Copyright (c) 2014-2015 Kylie McClain <somasis@exherbo.org>
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted, provided that the above
+copyright notice and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
