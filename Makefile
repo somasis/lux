@@ -1,4 +1,4 @@
-VERSION=0.4.10
+VERSION=0.5
 
 BINDIR?=/usr/bin
 MANDIR?=/usr/share/man
