@@ -1,11 +1,10 @@
 VERSION=0.4.10
 
 BINDIR?=/usr/bin
-MANDIR?=/usr/share/man/man1
+MANDIR?=/usr/share/man
 SYSCONFDIR?=/etc
 
 DESCRIPTION=a Linux kernel updater
-HELP2MAN=help2man -n "$(DESCRIPTION)" -N --version-option -v --help-option -h
 
 all: clean prepare man
 
@@ -17,18 +16,22 @@ prepare:
 	cp lux lux.orig
 	sed -e "s/@@VERSION@@/$(VERSION)/g" -i lux
 
-man: prepare
-	$(HELP2MAN) -o lux.1 ./lux
+man:
+	ronn --roff --organization="lux $(VERSION)" --manual="System Manager's Manual" lux.1.ronn
+	ronn --roff --organization="lux $(VERSION)" --manual="File Formats Manual" lux.conf.5.ronn
 
 install: prepare man
 	mkdir -p $(DESTDIR)$(BINDIR)
 	install lux $(DESTDIR)$(BINDIR)/lux
-	mkdir -p $(DESTDIR)$(MANDIR)
-	install lux.1 $(DESTDIR)$(MANDIR)/lux.1
+	mkdir -p $(DESTDIR)$(MANDIR)/man1
+	install lux.1 $(DESTDIR)$(MANDIR)/man1/lux.1
+	mkdir -p $(DESTDIR)$(MANDIR)/man5
+	install lux.5 $(DESTDIR)$(MANDIR)/man5/lux.conf.5
 	mkdir -p $(DESTDIR)$(SYSCONFDIR)
 	install lux.conf $(DESTDIR)$(SYSCONFDIR)/lux.conf
 
 uninstall:
 	rm $(DESTDIR)$(BINDIR)/lux
-	rm $(DESTDIR)$(MANDIR)/lux.1
+	rm $(DESTDIR)$(MANDIR)/man1/lux.1
+	rm $(DESTDIR)$(MANDIR)/man5/lux.conf.5
 	rm $(DESTDIR)$(SYSCONFDIR)/lux.conf

@@ -6,7 +6,7 @@ simple process which takes out the grunt work from updating.
 
 ## Requirements
 - [git](http://git-scm.com)
-- [help2man](https://www.gnu.org/software/help2man)
+- [ronn](https://github.com/rtomayko/ronn)
 - [Everything compiling a kernel entails](https://git.kernel.org/cgit/linux/kernel/git/stable/linux-stable.git/tree/Documentation/Changes)
 
 ## Installation
@@ -17,7 +17,7 @@ simple process which takes out the grunt work from updating.
 3. `make install`
 
 ## Usage
-After installation, just run `man lux`. If you prefer, you can also just do `lux -h`.
+After installation, just run `man lux`.
 
 ## Rationale
 On Linux distributions, you often have to choose between a few options for
