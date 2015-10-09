@@ -1,8 +1,8 @@
-# lux(1) -- a Linux kernel updater
+# lux(8) -- a Linux kernel updater
 
 ## SYNOPSIS
 
-`lux` [-dhiquvf] [<directory>]
+`lux` [-dfiquv] [<directory>]
 
 ## DESCRIPTION
 
@@ -15,6 +15,14 @@ it as fast, if not faster than using a tarball for updating.
 
 ## OPTIONS
 
+- `-d`:
+    Debug mode. This causes `lux` to be a bit noisey, and just tells you
+    about assumptions it makes, and what it's doing when it would normally
+    suppress git(1)'s output, or otherwise be quiet.
+
+    If you're hitting really strange issues, and are creating a bug,
+    you might wish to run `lux` with `bash -x` instead. `bash -x lux`
+
 - `-f`:
     Get a fresh tree from the remote specified in `lux.conf`. This is
     equivalent to if you cloned a tree into the <directory> yourself.
@@ -22,10 +30,6 @@ it as fast, if not faster than using a tarball for updating.
     If the configured <directory> does not exist, or does not contain a
     git(1) repository that looks like a Linux kernel tree, it will remove
     the directory and clone a new tree to it.
-
-- `-u`:
-    Only update the kernel source, don't do anything related to upgrading
-    the installed version of the kernel.
 
 - `-i`:
     Only install the kernel, don't do anything related to updating the
@@ -38,13 +42,9 @@ it as fast, if not faster than using a tarball for updating.
 
     See [QUIET MODE][] for more details.
 
-- `-d`:
-    Debug mode. This causes `lux` to be a bit noisey, and just tells you
-    about assumptions it makes, and what it's doing when it would normally
-    suppress git(1)'s output, or otherwise be quiet.
-
-    If you're hitting really strange issues, and are creating a bug,
-    you might wish to run `lux` with `bash -x` instead. `bash -x lux`
+- `-u`:
+    Only update the kernel source, don't do anything related to upgrading
+    the installed version of the kernel.
 
 - `-v`:
     Print current `lux` version, and the copyright/license.

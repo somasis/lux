@@ -1,15 +1,13 @@
-VERSION=0.5
+VERSION=0.5.1
 
 BINDIR?=/usr/bin
 MANDIR?=/usr/share/man
 SYSCONFDIR?=/etc
 
-DESCRIPTION=a Linux kernel updater
-
 all: clean prepare man
 
 clean:
-	rm -f lux.1
+	rm -f lux.8 lux.conf.5
 	[ -f "lux" ] && [ -f "lux.orig" ] && rm -f lux && mv lux.orig lux || true
 
 prepare:
@@ -17,21 +15,21 @@ prepare:
 	sed -e "s/@@VERSION@@/$(VERSION)/g" -i lux
 
 man:
-	ronn --roff --organization="lux $(VERSION)" --manual="System Manager's Manual" lux.1.ronn
-	ronn --roff --organization="lux $(VERSION)" --manual="File Formats Manual" lux.conf.5.ronn
+	ronn --pipe --roff --organization="lux $(VERSION)" --manual="System Manager's Manual" lux.8.ronn > lux.8
+	ronn --pipe --roff --organization="lux $(VERSION)" --manual="File Formats Manual" lux.conf.5.ronn > lux.conf.5
 
 install: prepare man
 	mkdir -p $(DESTDIR)$(BINDIR)
 	install lux $(DESTDIR)$(BINDIR)/lux
-	mkdir -p $(DESTDIR)$(MANDIR)/man1
-	install lux.1 $(DESTDIR)$(MANDIR)/man1/lux.1
+	mkdir -p $(DESTDIR)$(MANDIR)/man8
+	install lux.8 $(DESTDIR)$(MANDIR)/man8/lux.8
 	mkdir -p $(DESTDIR)$(MANDIR)/man5
-	install lux.5 $(DESTDIR)$(MANDIR)/man5/lux.conf.5
+	install lux.conf.5 $(DESTDIR)$(MANDIR)/man5/lux.conf.5
 	mkdir -p $(DESTDIR)$(SYSCONFDIR)
 	install lux.conf $(DESTDIR)$(SYSCONFDIR)/lux.conf
 
 uninstall:
-	rm $(DESTDIR)$(BINDIR)/lux
-	rm $(DESTDIR)$(MANDIR)/man1/lux.1
-	rm $(DESTDIR)$(MANDIR)/man5/lux.conf.5
-	rm $(DESTDIR)$(SYSCONFDIR)/lux.conf
+	rm -f $(DESTDIR)$(BINDIR)/lux
+	rm -f $(DESTDIR)$(MANDIR)/man8/lux.8
+	rm -f $(DESTDIR)$(MANDIR)/man5/lux.conf.5
+	rm -f $(DESTDIR)$(SYSCONFDIR)/lux.conf

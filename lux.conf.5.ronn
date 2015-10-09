@@ -6,11 +6,11 @@
 
 ## DESCRIPTION
 
-lux(1) is configured through `lux.conf`'s variables and functions which
+lux(8) is configured through `lux.conf`'s variables and functions which
 adhere to bash(1) syntax, allowing for custom logic and user-defined
 functionality.
 
-lux(1) uses functions for it's main functionality, and as such, you can
+lux(8) uses functions for it's main functionality, and as such, you can
 replace it's kernel updating/upgrading functionality with your own custom
 functions, if desired. This allows for essentially endless possibilities,
 so long as it can be done from a bash(1) shell.
@@ -108,7 +108,7 @@ All default phase functions can be called with `default_<phase>`
 
 ## SEE ALSO
 
-lux(1)
+lux(8)
 
 ## COPYRIGHT
 

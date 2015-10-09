@@ -1,24 +1,6 @@
 #!/bin/bash
 # lux, a Linux kernel updater - version @@VERSION@@
-# Usage: lux [-dhiquv] [directory]
-# Update a kernel source tree located in [directory] to the latest version, and
-# then configure and install it.
 #
-# If unspecified and not set in lux.conf, [directory] is /usr/src/linux
-#
-# Options:
-#      -f                       get a fresh tree
-#
-#      -u                       only update the kernel source; don't install
-#      -i                       only install the kernel source; don't update
-#
-#      -q                       non-interactive; use defaults for all questions
-#      -d                       debug mode, be verbose
-#
-#      -h                       show help
-#      -v                       show version
-#
-# End of help.
 # Copyright (c) 2014-2015 Kylie McClain <somasis@exherbo.org>
 #
 # Permission to use, copy, modify, and/or distribute this software for any
@@ -267,35 +249,16 @@ quiet() {
     fi
 }
 
-help() {
-    sed -n '/^#/!d;s/^# //;s/^#//;3,${p;}' "$0" | \
-        while IFS= read help_line;do
-            if [[ "$help_line" == "End of help." ]];then
-                exit 0
-            else
-                printf "%s\n" "$help_line"
-            fi
-        done
-    exit 0
-}
-
 version() {
-    sed 's/^# //;s/, .*-//;s/version //;2q;$!d' "$0"
-    copyright
-    exit 0
-}
-
-copyright() {
-    sed -n '/^#/!d;s/^# //;s/^#//;/End of help./,${p;}' "$0" | \
+    sed 's/^# //;s/, .*-//;s/version //;/^#!/d;s/^#//' "$0" |
     while IFS= read copyright_line;do
-        if [[ "$copyright_line" == "End of help." ]];then
-            true
-        elif [[ "$copyright_line" == "End of copyright." ]];then
+        if [[ "$copyright_line" == "End of copyright." ]];then
             break
         else
             printf '%s\n' "$copyright_line"
         fi
     done
+    exit 0
 }
 
 nonfatal() {
@@ -315,7 +278,7 @@ error() {
 
 invalid_arg() {
     stderr "$me: invalid option -- '$*'\n"
-    error invalid_arg
+    error invalid_arg >/dev/null 2>&1
 }
 
 realpath() {
@@ -431,7 +394,7 @@ while [[ $# -ne 0 ]];do
     arg="$1"
     shift
 
-    while getopts ":dfhiquv" argument "$arg"; do
+    while getopts ":dfiquv" argument "$arg"; do
         case "$argument" in
             d)
                 debug=true
@@ -464,14 +427,12 @@ while [[ $# -ne 0 ]];do
             f)
                 fresh_tree=true
             ;;
-            h)
-                help
-            ;;
             v)
                 version
             ;;
-            *)
-                invalid_arg "$1"
+            ?)
+                arg=${arg:1:1}
+                invalid_arg "$arg"
             ;;
         esac
     done
