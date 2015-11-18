@@ -536,8 +536,15 @@ if [[ "${target_version}" == *.0 ]];then
     target_version=${target_version%.0}
 fi
 
-quiet_git fetch --depth=1 origin "${target_version}"
-quiet_git reset --hard "FETCH_HEAD"
+if [[ -z "${only_install}" ]];then
+    quiet_git fetch --depth=1 origin "${target_version}"
+    quiet_git reset --hard "FETCH_HEAD"
+else
+    quiet_git reset --hard "${target_version}"
+fi
+
+quiet_git clean -fdx
+
 
 target_version=${old_target}
 
