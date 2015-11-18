@@ -18,72 +18,38 @@
 # End of copyright.
 #
 
-#
-# You can replace any of these values/functions with your own custom stuff in lux.conf
-#
+# Don't mess with these variables, just use lux.conf(5).
 
-# MAKEOPTS  Options which will be passed to all `make` invocations.
-#           This might be things like a specific $CC, or $CROSS_COMPILE target.
-#           By default, we tell `make` to use a compiler thread for each processor, plus 2.
-#
 MAKEOPTS="-j$(( $(nproc 2>/dev/null || grep -c processor /proc/cpuinfo) + 2 ))"
-
-# directory The directory that should be used for storing the kernel tree at.
-#           If it does not exist at the time of lux's run, lux will tell you to use -f to
-#           create the directory and get a fresh kernel tree.
-#
 directory=/usr/src/linux
-
-# branch    The branch that should be used for updating from. If unset, assume whatever
-#           the current checked out branch is; and if we have no tree yet, go with whatever
-#           the remote gives us.
-#
 branch=master
 kernel_repo="https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git"
-
-# target    Target to upgrade to. By default, this is the latest tag. (probably what you want)
-#           You can set a specific tag to upgrade to with "target=tag:<tag>",
-#           Or, you can set a certain commit/etc with "target=<commit hash>".
-#
 target=tag:latest
+preferred_config=menuconfig
 
-# Phases that are ran after updating the tree
-
-## kernel_prepare - First phase, turning off resource-heavy programs, etc
 kernel_prepare() {
     default_kernel_prepare "$@"
 }
 
-## kernel_patch - Second phase, things like custom patches, etc
 kernel_patch() {
     default_kernel_patch "$@"
 }
 
-## kernel_configure - Third phase, probably shouldn't mess with
 kernel_configure() {
     default_kernel_configure "$@"
 }
 
-## kernel_compile - Fourth phase, probably shouldn't mess with
 kernel_compile() {
     default_kernel_compile "$@"
 }
 
-## kernel_install - Fifth phase, custom install procedures perhaps
 kernel_install() {
     default_kernel_install "$@"
 }
 
-## kernel_post_install - Last phase, success messages, rebooting, etc
 kernel_post_install() {
     default_kernel_post_install "$@"
 }
-
-#
-# End of configuration variables.
-#
-# Don't edit anything past here.
-#
 
 default_kernel_prepare() {
     printf "Upgrading %s --> %s, press ^C to abort.\n\n" "$running_kernel_version" "$target_version"
