@@ -115,7 +115,11 @@ default_kernel_configure() {
         if ask "Do you want to configure the kernel?" n;then
             method=olddefconfig
         else
-            method=menuconfig
+            if [[ "${preferred_config}" == nconfig ]];then
+                method=nconfig
+            else
+                method=menuconfig
+            fi
         fi
     fi
     make $method || error kernel_configuration_failed
@@ -558,7 +562,7 @@ kernel_prepare 2>&1 | tee -a "$prepare_log"
 debug "Running \`kernel_patch\`; logging to \"$patch_log\""
 kernel_patch 2>&1 | tee -a "$patch_log"
 
-debug "Running \`kernel_configure\`; we can't log this due to complications involving menuconfig"
+debug "Running \`kernel_configure\`; we can't log this due to complications involving menuconfig/nconfig"
 kernel_configure
 
 debug "Running \`kernel_compile\`; logging to \"$compile_log\""

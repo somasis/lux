@@ -61,6 +61,13 @@ so long as it can be done from a bash(1) shell.
 
     Examples: `target=tag:latest`, `target=tag:v4.0.3`, `target=HEAD`
 
+- `preferred_config`:
+    Preferred method to use for configuring the kernel with an interace.
+    This can be either nconfig or menuconfig. Any other setting will be
+    ignored.
+
+    By default, `menuconfig` is used.
+
 ## PHASES
 
 Phases are what do the actual work of preparing, patching, configuring,
