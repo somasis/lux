@@ -187,6 +187,7 @@ err_ctrl_c=127
 
 running_kernel_version=v$(uname -r | sed 's#-.*##;s#[^0-9.]##g')
 
+export GREP_OPTIONS=
 tmp_dir=${TMPDIR:-/tmp}
 config="/etc/lux.conf"
 
@@ -217,6 +218,11 @@ quiet() {
     else
         return 1
     fi
+}
+
+usage() {
+    echo "usage: ${me} [-dfiquvh] [directory]"
+    exit 0
 }
 
 version() {
@@ -364,8 +370,14 @@ while [[ $# -ne 0 ]];do
     arg="$1"
     shift
 
-    while getopts ":dfiquv" argument "$arg"; do
+    while getopts ":dfiquvh" argument "$arg"; do
         case "$argument" in
+            h)
+                usage
+            ;;
+            v)
+                version
+            ;;
             d)
                 debug=true
                 [[ "$quiet" ]] && {
@@ -396,9 +408,6 @@ while [[ $# -ne 0 ]];do
             ;;
             f)
                 fresh_tree=true
-            ;;
-            v)
-                version
             ;;
             ?)
                 arg=${arg:1:1}
