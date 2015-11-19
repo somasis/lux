@@ -10,33 +10,12 @@ lux(8) is configured through `lux.conf`'s variables and functions which
 adhere to bash(1) syntax, allowing for custom logic and user-defined
 functionality.
 
-lux(8) uses functions for it's main functionality, and as such, you can
-replace it's kernel updating/upgrading functionality with your own custom
+lux(8) uses functions for its main functionality, and as such, you can
+replace its kernel updating/upgrading functionality with your own custom
 functions, if desired. This allows for essentially endless possibilities,
 so long as it can be done from a bash(1) shell.
 
 ## VARIABLES
-
-- `MAKEOPTS`:
-    `MAKEOPTS` is a variable that is passed to all invocations of `make`.
-
-    The default `MAKEOPTS` value is "-j<number of processors>", to allow
-    for taking advantage of the power of systems with multiple processors.
-
-    Other variables that you may be interested in (not a complete list, see
-    the kernel's Makefile for more):
-        - `V=<0|1|2>`:
-            Verbosity level of the compilation process.
-        - `O=<directory>`:
-            Where kbuild stores files that are the output of compilation.
-        - `ARCH=<architecture>`:
-            Architecture to build for.
-        - `HOSTCC=<C compiler>`:
-            C compiler (such as gcc(1) or clang(1)) which can be ran on the
-            host.
-        - `CROSS_COMPILE=<CHOST>`
-            Triplet for the target you're compiling for; this acts as a
-            prefix for all the toolchain programs used.
 
 - `directory`:
     The directory that should be used for storing the kernel tree at.
@@ -67,6 +46,28 @@ so long as it can be done from a bash(1) shell.
     ignored.
 
     By default, `menuconfig` is used.
+
+- `MAKEOPTS`:
+    `MAKEOPTS` is a variable that is passed to all invocations of `make`.
+
+    The default `MAKEOPTS` value is "-j<number of processors>", to allow
+    for taking advantage of the power of systems with multiple processors.
+
+### MAKEOPTS VARIABLES
+    Variables that can be added to `MAKEOPTS` that you may be interested
+    in (not a complete list, see the kernel's Makefile for more):
+
+- `V=<0|1|2>`:
+    Verbosity level of the compilation process.
+- `O=<directory>`:
+    Where kbuild stores files that are the output of compilation.
+- `ARCH=<architecture>`:
+    Architecture to build for.
+- `HOSTCC=<C compiler>`:
+    C compiler (such as gcc(1) or clang(1)) which can be ran on the host.
+- `CROSS_COMPILE=<CHOST>`:
+    Triplet for the target you're compiling for; this acts as a prefix for
+    all the toolchain programs used.
 
 ## PHASES
 
