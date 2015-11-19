@@ -2,7 +2,7 @@
 
 ## SYNOPSIS
 
-`lux` [-dfiquv] [<directory>]
+`lux` [-dfiquvh] [<directory>]
 
 ## DESCRIPTION
 
@@ -48,6 +48,9 @@ it as fast, if not faster than using a tarball for updating.
 
 - `-v`:
     Print current `lux` version, and the copyright/license.
+
+- `-h`:
+    Print a brief usage message.
 
 ## QUIET MODE
 
