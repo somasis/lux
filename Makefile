@@ -1,35 +1,55 @@
-VERSION=0.5.1
+NAME	=lux
+VERSION	=0.5.1
 
-BINDIR?=/usr/bin
-MANDIR?=/usr/share/man
-SYSCONFDIR?=/etc
+MANS	=lux.conf.5 lux.8
 
-all: clean prepare man
+DESTDIR			?=$(PWD)/image
+prefix			?=/usr/local
+exec_prefix		?=$(prefix)
+bindir			?=$(exec_prefix)/bin
+sbindir			?=$(exec_prefix)/sbin
+libdir			?=$(exec_prefix)/lib
+libexecdir		?=$(exec_prefix)/libexec
+datarootdir		?=$(prefix)/share
+datadir			?=$(datarootdir)
+sysconfdir		?=$(prefix)/etc
+docdir			?=$(datarootdir)/doc/$(NAME)
+mandir			?=$(datarootdir)/man
+man1dir			?=$(mandir)/man1
+man2dir			?=$(mandir)/man2
+man3dir			?=$(mandir)/man3
+man4dir			?=$(mandir)/man4
+man5dir			?=$(mandir)/man5
+man6dir			?=$(mandir)/man6
+man7dir			?=$(mandir)/man7
+man8dir			?=$(mandir)/man8
+localstatedir	?=$(prefix)/var
+runstatedir		?=$(localstatedir)/run
+
+all:	$(NAME) $(MANS)
 
 clean:
-	rm -f lux.8 lux.conf.5
-	[ -f "lux" ] && [ -f "lux.orig" ] && rm -f lux && mv lux.orig lux || true
+	rm -f $(NAME) $(MANS)
 
-prepare:
-	cp lux lux.orig
-	sed -e "s/@@VERSION@@/$(VERSION)/g" -i lux
+$(NAME):
+	sed -e "s/@@VERSION@@/$(VERSION)/g" $(NAME).in > $(NAME)
 
-man:
-	ronn --pipe --roff --organization="lux $(VERSION)" --manual="System Manager's Manual" lux.8.ronn > lux.8
-	ronn --pipe --roff --organization="lux $(VERSION)" --manual="File Formats Manual" lux.conf.5.ronn > lux.conf.5
+%.5:	%.5.ronn
+	ronn --pipe --roff --organization="$(NAME) $(VERSION)" --manual="File Formats Manual" $< > $@
 
-install: prepare man
-	mkdir -p $(DESTDIR)$(BINDIR)
-	install lux $(DESTDIR)$(BINDIR)/lux
-	mkdir -p $(DESTDIR)$(MANDIR)/man8
-	install lux.8 $(DESTDIR)$(MANDIR)/man8/lux.8
-	mkdir -p $(DESTDIR)$(MANDIR)/man5
-	install lux.conf.5 $(DESTDIR)$(MANDIR)/man5/lux.conf.5
-	mkdir -p $(DESTDIR)$(SYSCONFDIR)
-	install lux.conf $(DESTDIR)$(SYSCONFDIR)/lux.conf
+%.8:	%.8.ronn
+	ronn --pipe --roff --organization="$(NAME) $(VERSION)" --manual="System Manager's Manual" $< > $@
 
-uninstall:
-	rm -f $(DESTDIR)$(BINDIR)/lux
-	rm -f $(DESTDIR)$(MANDIR)/man8/lux.8
-	rm -f $(DESTDIR)$(MANDIR)/man5/lux.conf.5
-	rm -f $(DESTDIR)$(SYSCONFDIR)/lux.conf
+install:	doc $(NAME) $(MANS)
+	mkdir -p $(DESTDIR)$(bindir)
+	mkdir -p $(DESTDIR)$(docdir)
+	mkdir -p $(DESTDIR)$(man5dir)
+	mkdir -p $(DESTDIR)$(man8dir)
+	mkdir -p $(DESTDIR)$(sysconfdir)
+	install -m755 $(NAME) $(DESTDIR)$(bindir)/$(NAME)
+	install -m644 lux.conf.5 $(DESTDIR)$(man5dir)/lux.conf.5
+	install -m644 lux.8 $(DESTDIR)$(man8dir)/lux.8
+	install -m644 lux.conf $(DESTDIR)$(sysconfdir)/lux.conf
+	install -m644 doc/* $(DESTDIR)$(docdir)
+
+.PHONY:	all clean install
