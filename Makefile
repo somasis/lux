@@ -1,5 +1,5 @@
 NAME	=lux
-VERSION	=0.5.1
+VERSION	=0.6.0
 
 MANS	=lux.conf.5 lux.8
 
