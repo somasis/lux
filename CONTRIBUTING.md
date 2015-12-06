@@ -18,7 +18,7 @@ up into multiple commits, so that they can be reviewed seperately.
 
 Bugs should be reported to [GitHub's issue tracker][issues]. It is recommended
 that you read Simon Tatham's excellent article,
-["How to Report Bugs Effectively"](reporting-bugs).
+["How to Report Bugs Effectively"][reporting-bugs].
 
 [reporting-bugs]:   http://www.chiark.greenend.org.uk/~sgtatham/bugs.html
 [gerrit]:           https://galileo.mailstation.de/gerrit
