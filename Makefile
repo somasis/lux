@@ -33,6 +33,7 @@ clean:
 
 $(NAME):
 	sed -e "s/@@VERSION@@/$(VERSION)/g" $(NAME).in > $(NAME)
+	chmod +x $(NAME)
 
 %.5:	%.5.ronn
 	ronn --pipe --roff --organization="$(NAME) $(VERSION)" --manual="File Formats Manual" $< > $@
