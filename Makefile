@@ -13,26 +13,49 @@ libexecdir		?=$(exec_prefix)/libexec
 datarootdir		?=$(prefix)/share
 datadir			?=$(datarootdir)
 sysconfdir		?=$(prefix)/etc
-docdir			?=$(datarootdir)/doc/$(NAME)
+docdir			?=$(datarootdir)/doc/$(NAME)-$(VERSION)
 mandir			?=$(datarootdir)/man
-man1dir			?=$(mandir)/man1
-man2dir			?=$(mandir)/man2
-man3dir			?=$(mandir)/man3
-man4dir			?=$(mandir)/man4
 man5dir			?=$(mandir)/man5
-man6dir			?=$(mandir)/man6
-man7dir			?=$(mandir)/man7
 man8dir			?=$(mandir)/man8
 localstatedir	?=$(prefix)/var
 runstatedir		?=$(localstatedir)/run
 
-all:	$(NAME) $(MANS)
+all:
+	@printf "lux $(VERSION), a Linux kernel updater\n\n"
+	@printf "%-20s%-20s\n"	\
+		"DESTDIR"		"$(DESTDIR)"		\
+		"bindir"		"$(bindir)"			\
+		"libdir"		"$(libdir)"			\
+		"libexecdir"	"$(libexecdir)"		\
+		"datarootdir"	"$(datarootdir)"	\
+		"datadir"		"$(datadir)"		\
+		"sysconfdir"	"$(sysconfdir)"		\
+		"docdir"		"$(docdir)"			\
+		"mandir"		"$(mandir)"			\
+		"localstatedir"	"$(localstatedir)"	\
+		"runstatedir"	"$(runstatedir)"	\
+		""
+	@$(MAKE) --no-print-directory $(NAME) $(MANS)
 
 clean:
 	rm -f $(NAME) $(MANS)
 
 $(NAME):	$(NAME).in
-	sed -e "s/@@VERSION@@/$(VERSION)/g" $(NAME).in > $(NAME)
+	sed \
+		-e "s|@@prefix@@|$(prefix)|g"				\
+		-e "s|@@exec_prefix@@|$(exec_prefix)|g"		\
+		-e "s|@@libdir@@|$(libdir)|g"				\
+		-e "s|@@bindir@@|$(bindir)|g"				\
+		-e "s|@@libexecdir@@|$(libexecdir)|g"		\
+		-e "s|@@datarootdir@@|$(datarootdir)|g"		\
+		-e "s|@@datadir@@|$(datadir)|g"				\
+		-e "s|@@sysconfdir@@|$(sysconfdir)|g"		\
+		-e "s|@@docdir@@|$(docdir)|g"				\
+		-e "s|@@mandir@@|$(mandir)|g"				\
+		-e "s|@@localstatedir@@|$(localstatedir)|g"	\
+		-e "s|@@runstatedir@@|$(runstatedir)|g"		\
+		-e "s|@@VERSION@@|$(VERSION)|g"				\
+		$(NAME).in > $(NAME)
 	chmod +x $(NAME)
 
 %.5:	%.5.ronn
