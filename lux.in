@@ -61,8 +61,17 @@ default_kernel_patch() {
 }
 
 default_kernel_configure() {
-    # look at the .config backup logic to see how $method is determined
-    if [[ -z "${skip_default_kernel_config_check}" && ! -f "${directory}/.config" ]];then
+    if [[ -z "${skip_default_kernel_config_check}" && -f "${directory}/.config" ]];then
+        if ask "Do you want to use the existing kernel config?" y;then
+            debug "Since you have an existing kernel config, we'll use \`olddefconfig\`"
+            if ask "Do you want to interactively configure new kernel options?" n;then
+                method=olddefconfig
+            else
+                method=oldconfig
+            fi
+        fi
+    fi
+    if [[ -z "${skip_default_kernel_config_check}" ]];then
         stderr "No .config exists in \"${directory}\".\n"
         if [[ ! -f /proc/config.gz && -f "${LIBDIR:-/lib}"/modules/$(uname -r)/kernel/kernel/configs.ko* ]];then
             debug "Attempting to load /proc/config.gz module. (configs.ko)"
@@ -71,7 +80,11 @@ default_kernel_configure() {
         elif [[ -f /proc/config.gz ]] && ask "Do you want to use the config at /proc/config.gz?" y;then
             debug "gunzip -c /proc/config.gz > \"${directory}\"/.config"
             gunzip -c /proc/config.gz > "${directory}"/.config
-            method=olddefconfig
+            if ask "Do you want to interactively configure new kernel options?" n;then
+                method=olddefconfig
+            else
+                method=oldconfig
+            fi
         else
             stderr "Using default configuration.\n"
             method=defconfig
@@ -437,15 +450,11 @@ fi
 cd "$directory" || error cant_change_dir
 
 # backup kernel configuration, if there is one
-method=menuconfig
-
 if [[ -f .config && -z "$fresh_tree" ]];then
     tmp_config_file=$(mktemp "$tmp_dir/.lux-$$-configXXXXXX")
     cat ".config" > "$tmp_config_file"
     debug "Made config backup at \"$tmp_config_file\""
     has_existing_configuration=true
-    debug "Since you have an existing kernel config, we'll use \`olddefconfig\`"
-    method=olddefconfig
 fi
 
 # decide if we want to clone, or reset an existing repo
