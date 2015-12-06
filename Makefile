@@ -31,7 +31,7 @@ all:	$(NAME) $(MANS)
 clean:
 	rm -f $(NAME) $(MANS)
 
-$(NAME):
+$(NAME):	$(NAME).in
 	sed -e "s/@@VERSION@@/$(VERSION)/g" $(NAME).in > $(NAME)
 	chmod +x $(NAME)
 
