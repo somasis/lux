@@ -444,7 +444,7 @@ if [[ -f .config && -z "$fresh_tree" ]];then
     cat ".config" > "$tmp_config_file"
     debug "Made config backup at \"$tmp_config_file\""
     has_existing_configuration=true
-    debug "Since you have an existing kernel config, we'll use \`oldoldconfig\`"
+    debug "Since you have an existing kernel config, we'll use \`olddefconfig\`"
     method=olddefconfig
 fi
 
