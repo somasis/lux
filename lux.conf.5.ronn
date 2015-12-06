@@ -109,18 +109,18 @@ All default phase functions can be called with `default_<phase>`
 ## FILES
 
 - /etc/lux.conf:
-    The default `lux.conf` location. See lux.conf(5) for details on that.
+    The default `lux.conf` location.
 
 - /usr/src/linux:
     The default location for a kernel tree.
 
 ## SEE ALSO
 
-lux(8)
+lux(8), make(1), bash(1)
 
 ## COPYRIGHT
 
-Written by Kylie McClain <<somasis@exherbo.org>>
+Written by Kylie McClain <somasis@exherbo.org>
 
 <https://github.com/somasis/lux>
 
