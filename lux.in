@@ -73,7 +73,7 @@ default_kernel_configure() {
     fi
     if [[ -z "${skip_default_kernel_config_check}" ]];then
         stderr "No .config exists in \"${directory}\".\n"
-        if [[ ! -f /proc/config.gz && -f "${LIBDIR:-/lib}"/modules/$(uname -r)/kernel/kernel/configs.ko* ]];then
+        if [[ ! -f /proc/config.gz && -f "${LIBDIR}"/modules/$(uname -r)/kernel/kernel/configs.ko ]];then
             debug "Attempting to load /proc/config.gz module. (configs.ko)"
             modprobe configs
             default_kernel_configure "$@"
@@ -200,8 +200,10 @@ err_ctrl_c=127
 
 running_kernel_version=v$(uname -r | sed 's#-.*##;s#[^0-9.]##g')
 
-export GREP_OPTIONS=
-tmp_dir=${TMPDIR:-/tmp}
+# reset the environment a little so commands are more predictable
+export GREP_OPTIONS= LC_ALL=C
+TMPDIR=${TMPDIR:-/tmp}
+LIBDIR=${LIBDIR:-/lib}
 config="/etc/lux.conf"
 
 [[ -f "${config}" ]] && . "${config}"
