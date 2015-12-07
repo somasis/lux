@@ -28,27 +28,27 @@ target=tag:latest
 preferred_config=menuconfig
 
 kernel_prepare() {
-    default_kernel_prepare "$@"
+    default_kernel_prepare
 }
 
 kernel_patch() {
-    default_kernel_patch "$@"
+    default_kernel_patch
 }
 
 kernel_configure() {
-    default_kernel_configure "$@"
+    default_kernel_configure
 }
 
 kernel_compile() {
-    default_kernel_compile "$@"
+    default_kernel_compile
 }
 
 kernel_install() {
-    default_kernel_install "$@"
+    default_kernel_install
 }
 
 kernel_post_install() {
-    default_kernel_post_install "$@"
+    default_kernel_post_install
 }
 
 default_kernel_prepare() {
@@ -161,12 +161,12 @@ git_pull() {
     else
         quiet_git branch "${branch}"
     fi
-    quiet_git reset --hard origin/${branch}
-    nonfatal quiet_git checkout -f HEAD || quiet_git reset --hard origin/${branch} # prevent merge conflicts
+    quiet_git reset --hard origin/"${branch}"
+    nonfatal quiet_git checkout -f HEAD || quiet_git reset --hard origin/"${branch}" # prevent merge conflicts
     # if we don't specify depth, `git` tries getting the whole tree!
-    nonfatal quiet_git pull -f "$(debug && echo -v)" --depth=1 origin ${branch} || quiet_git reset --hard origin/${branch} # prevent merge conflicts
+    nonfatal quiet_git pull -f "$(debug && echo -v)" --depth=1 origin "${branch}" || quiet_git reset --hard origin/"${branch}" # prevent merge conflicts
     quiet_git fetch -p
-    quiet_git reset --hard origin/${branch}
+    quiet_git reset --hard origin/"${branch}"
 }
 
 get_makefile_ver() {
