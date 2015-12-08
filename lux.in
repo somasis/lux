@@ -111,7 +111,11 @@ default_kernel_compile() {
 default_kernel_install() {
     make modules_install || error kernel_modules_install_failed
     image="$directory/$(make image_name)"
-    make install || error kernel_failed_to_install
+    if type -fP kernel-install >/dev/null 2>&1 && ask "Do you want to use kernel-install (instead of make install)?" y;then
+        kernel-install add "${target_version#v}" "$image" || error kernel_failed_to_install
+    else
+        make install || error kernel_failed_to_install
+    fi
 }
 
 default_kernel_post_install() {
