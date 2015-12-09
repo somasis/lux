@@ -71,8 +71,8 @@ assumptions based on some rules of the system it's running on.
 - Install, using `make install`.
 
   As of writing, the kernel's Makefile calls to installkernel(8), which is
-  usually included with systems that have debianutils or have systemd
-  installed.
+  usually included with systems that have debianutils or systemd
+  installed. If kernel-install(8) is found, lux will default to using it.
 
 ## FILES
 
