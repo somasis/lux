@@ -457,7 +457,7 @@ cd "$directory" || error cant_change_dir
 
 # backup kernel configuration, if there is one
 if [[ -f .config && -z "$fresh_tree" ]];then
-    tmp_config_file=$(mktemp "$tmp_dir/.lux-$$-configXXXXXX")
+    tmp_config_file=$(mktemp "${TMPDIR}/.lux-$$-configXXXXXX")
     cat ".config" > "$tmp_config_file"
     debug "Made config backup at \"$tmp_config_file\""
     has_existing_configuration=true
