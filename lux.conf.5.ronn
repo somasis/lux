@@ -79,8 +79,7 @@ All default phase functions can be called with `default_<phase>`
 
 - `kernel_prepare`:
     By default, just prints
-    "Upgrading <running version> -> <target version>, press ^C to abort.",
-    then sleeps for 10 seconds.
+    "Upgrading <running version> -> <target version>, press ^C to abort.".
 
     Examples of usage could be sending a notification with notify-send(1),
     stopping resource-intensive programs, logging something to syslog.
