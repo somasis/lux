@@ -203,7 +203,7 @@ running_kernel_version=$(uname -r | sed 's#-.*##;s#[^0-9.]##g')
 # reset the environment a little so commands are more predictable
 export GREP_OPTIONS= LC_ALL=C
 TMPDIR=${TMPDIR:-/tmp}
-LIBDIR=${LIBDIR:-/lib}
+LIBDIR="@@libdir@@"
 config="/etc/lux.conf"
 
 [[ -f "${config}" ]] && . "${config}"
