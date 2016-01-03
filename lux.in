@@ -64,49 +64,83 @@ default_kernel_patch() {
     :
 }
 
+default_kernel_configure_print_choices() {
+    printf 'Choices for configuring kernel:\n'
+    printf '    %s - %s\n'    \
+        e "Use existing configuration, if it exists; else, use running config, using default on error" \
+        d "Use default configuration" \
+        p "Use running configuration (requires /proc/config.gz)" \
+        m "Manually configure kernel with ${preferred_config}, basing on existing, running, or default config" \
+        n "Manually configure kernel with ${preferred_config}, basing on default config" \
+        o "Manually configure kernel with ${preferred_config}, basing on running config (requires /proc/config.gz)" \
+        q "Exit ${me}"
+}
+
+default_kernel_configure_load_running_config() {
+    debug "Attempting to load running config\n"
+    if [[ -r /proc/config.gz ]];then
+        gunzip -c /proc/config.gz > "${directory}"/.config
+    elif [[ ! -r /proc/config.gz && -f "${LIBDIR}"/modules/"$(uname -r)"/kernel/kernel/configs.ko* ]];then
+        debug "Attempting to modprobe configs module\n"
+        modprobe configs
+        gunzip -c /proc/config.gz > "${directory}"/.config
+    elif [[ -r /boot/config-"$(uname -r)" ]];then
+        debug "Using config at /boot/config-$(uname -r)\n"
+        cat /boot/config-"$(uname -r)" > "${directory}"/.config
+    else
+        printf "Couldn't load running configuration, can't find /proc/config.gz or /boot/config-$(uname -r)\n" >&2
+        return 1
+    fi
+}
+
 default_kernel_configure() {
-    if [[ "${skip_default_kernel_config_check}" == 'false' && -f "${directory}/.config" ]];then
-        if ask "Do you want to use the existing kernel config?" y;then
-            debug "Since you have an existing kernel config, we'll use \`olddefconfig\`"
-            if ask "Do you want to interactively configure new kernel options?" n;then
+    if [[ "${quiet}" == 'false' ]];then
+        default_kernel_configure_print_choices
+    fi
+    method=$(multiple_ask "How do you want to configure the kernel?" e d p m n o q ?)
+    case "${method,,}" in
+        e)
+            if [[ -r ${directory}/.config ]];then
+                debug "Using existing configuration\n"
                 method=olddefconfig
             else
-                method=oldconfig
-            fi
-        fi
-    fi
-    if [[ "${skip_default_kernel_config_check}" == 'false' ]];then
-        [[ -f "${directory}/.config" ]] || printf "No .config exists in \"${directory}\".\n" >&2
-        if [[ ! -f /proc/config.gz && -f "${LIBDIR}"/modules/$(uname -r)/kernel/kernel/configs.ko ]];then
-            debug "Attempting to load /proc/config.gz module. (configs.ko)"
-            modprobe configs
-            default_kernel_configure "$@"
-        elif [[ -f /proc/config.gz ]] && ask "Do you want to use the config at /proc/config.gz?" y;then
-            debug "gunzip -c /proc/config.gz > \"${directory}\"/.config"
-            gunzip -c /proc/config.gz > "${directory}"/.config
-            if ask "Do you want to interactively configure new kernel options?" n;then
                 method=olddefconfig
-            else
-                method=oldconfig
+                if ! default_kernel_configure_load_running_config;then
+                    printf "Using default configuration\n" >&2
+                    method=defconfig
+                fi
             fi
-        else
-            printf "Using default configuration.\n" >&2
-            skip_default_kernel_config_check=true skip_default_kernel_config_ask=true default_kernel_configure "$@"
-        fi
-        skip_default_kernel_config_check=true default_kernel_configure "$@"
-    elif [[ "$method" == "olddefconfig" ]];then
-        if [[ "${skip_default_kernel_config_ask}" == false ]] && ask "Do you want to configure the kernel?" n;then
-            [[ -f "${directory}"/.config ]] && method=olddefconfig
-            [[ -f "${directory}"/.config ]] || method=defconfig
-        else
-            if [[ "${preferred_config}" == nconfig ]];then
-                method=nconfig
-            else
-                method=menuconfig
+        ;;
+        d) method=defconfig ;;
+        p)
+            method=olddefconfig
+            default_kernel_configure_load_running_config || die $err_unable_to_load_running_config
+        ;;
+        m)
+            if [[ ! -f ${directory}/.config ]] && ! default_kernel_configure_load_running_config;then
+                method=defconfig
+                make $method || die $err_kernel_configuration_failed
             fi
-        fi
-    fi
-    make $method || error kernel_configuration_failed
+            method=${preferred_config}
+        ;;
+        n)
+            method=defconfig
+            make $method || die $err_kernel_configuration_failed
+            method=${preferred_config}
+        ;;
+        o)
+            if ! default_kernel_configure_load_running_config;then
+                die $err_unable_to_load_running_config
+            else
+                method=${preferred_config}
+            fi
+        ;;
+        q) exit $err_exited ;;
+        ?)
+            default_kernel_configure; return $?
+        ;;
+    esac
+    make $method || die $err_kernel_configuration_failed
 }
 
 default_kernel_compile() {
@@ -137,7 +171,7 @@ get_target_version() {
                     _target_version=$(git ls-remote -t "$kernel_repo" | sed 's#.*refs/tags/##;s#\^{}.*##' | cut -d'v' -f2- | tr '.' ' ' | sort -k 1n,1n -k 2n,2n -k 3n,3n -k 4n,4n | tr ' ' '.')
                 fi
                 if [[ "$branch" == *stable* || $(basename ${kernel_repo} | sed 's/\.git//') == *-stable ]];then # if following stable branch you probably don't want any dash versions
-                    debug "Filtering out versions ending with dashed sections, those are testing versions..."
+                    debug "Filtering out versions ending with dashed sections, those are testing versions...\n"
                     _target_version=$(echo "$_target_version" | grep -v -- '-.*')
                 fi
                 _target_version=$(echo "$_target_version" | tail -n1)
@@ -198,6 +232,7 @@ err_kernel_configuration_failed=64
 err_kernel_compilation_failed=65
 err_kernel_modules_install_failed=66
 err_kernel_failed_to_install=67
+err_unable_to_load_running_config=80
 err_ctrl_c=127
 
 running_kernel_version=$(uname -r | sed 's#-.*##;s#[^0-9.]##g')
@@ -336,8 +371,30 @@ ask() {
     return $?
 }
 
-stderr() {
-    printf "$@" >&2
+multiple_ask() {
+    unstrict_ifs
+    ask_text="$1"; shift
+    ask_default="${1^^}"; shift
+    ask_choices=( $@ ); shift
+    strict_ifs
+
+    if [[ "$quiet" == 'true' ]];then
+        ask_reply="$ask_default"
+    else
+        printf "%s [%s%s] " "$ask_text" "${ask_default}"  \
+            "$(for a in ${ask_choices[@]};do
+                printf /%s ${a}
+            done)" >&2
+        read -r -n1 ask_reply; [[ "$ask_reply" ]] && printf '\n' >&2
+    fi
+
+    ask_reply=${ask_reply^^}
+
+    if [[ -z "$ask_reply" ]];then
+        ask_reply="$ask_default"
+    fi
+
+    echo "${ask_reply}"
 }
 
 clean_up() {
@@ -364,7 +421,6 @@ quiet=false
 only_install=false
 only_update=false
 fresh_tree=false
-skip_default_kernel_config_check=false
 
 while [[ $# -ne 0 ]];do
     arg="$1"

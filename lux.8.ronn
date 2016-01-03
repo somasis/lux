@@ -60,13 +60,8 @@ assumptions based on some rules of the system it's running on.
 
 - Cloning a fresh copy of the kernel source, if `-f` is specified.
 - Upgrading the kernel, if the target version is not being ran.
-- If <directory>/.config does not exist... try using the running kernel's
-  configuration. If that's not possible, use the kernel's default config.
-
-- If <directory>/.config does exist... use it, and update the config with
-  new options set to their default, retaining the value of options that are
-  already set. (`make olddefconfig`)
-
+- Configure the kernel, using existing configuration, falling back to the
+  running system's configuration, and then default if that can't be used
 - Compile.
 - Install, using `make install`.
 
