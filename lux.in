@@ -183,19 +183,15 @@ get_makefile_ver() {
 
 me="${0##*/}"
 
-err_good=0
+err_exited=0
 err_invalid_arg=1
 err_nonexistant_dir=2
-err_git=3
 err_no_git_repo=4
 err_unable_to_make_dir=5
 err_unwritable_dir=6
 err_cant_change_dir=7
-err_make=9
 err_not_gonna_update=10
-err_invalid_target_version=11
 err_only_one_action=31
-err_only_one_output_level=32
 err_not_a_kernel_repo=62
 err_kernel_clean_failed=63
 err_kernel_configuration_failed=64
@@ -207,7 +203,7 @@ err_ctrl_c=127
 running_kernel_version=$(uname -r | sed 's#-.*##;s#[^0-9.]##g')
 
 # reset the environment a little so commands are more predictable
-export GREP_OPTIONS= LC_ALL=C
+export GREP_OPTIONS="" LC_ALL=C
 TMPDIR=${TMPDIR:-/tmp}
 LIBDIR="@@libdir@@"
 config="/etc/lux.conf"
@@ -226,7 +222,7 @@ debug() {
     if [[ "$debug" == "true" && -z "${print}" ]];then
         return 0
     elif [[ "${debug}" == "true" && ! -z "${print}" ]];then
-        printf "$@" >&2
+        printf "$print" >&2
     elif [[ "${debug}" == "false" && -z "${print}" ]];then
         return 1
     fi
@@ -242,19 +238,19 @@ quiet() {
 
 usage() {
     echo "usage: ${me} [-dfiquvh] [directory]"
-    exit 0
+    exit $err_exited
 }
 
 version() {
     sed 's/^# //;s/, .*-//;s/version //;/^#!/d;s/^#//' "$0" |
-    while IFS= read copyright_line;do
+    while IFS= read -r copyright_line;do
         if [[ "$copyright_line" == "End of copyright." ]];then
             break
         else
             printf '%s\n' "$copyright_line"
         fi
     done
-    exit 0
+    exit $err_exited
 }
 
 die() {
@@ -320,7 +316,7 @@ ask() {
         ask_reply="$_default"
     else
         printf "%s [%s] " "$ask_text" "$_default_text" >&2
-        read -n1 ask_reply; [[ "$ask_reply" ]] && printf '\n' >&2
+        read -r -n1 ask_reply; [[ "$ask_reply" ]] && printf '\n' >&2
     fi
 
     ask_reply=$(echo "$ask_reply" | tr '[:upper:]' '[:lower:]')
@@ -485,7 +481,7 @@ if [[ "$only_update" == 'true' ]];then
     else
         printf "version %s available\n" "${target_version}"
     fi
-    exit 0
+    exit $err_exited
 fi
 
 [[ "$target_version" == 'none' ]] && target_version=${running_kernel_version}
@@ -505,7 +501,7 @@ if [[ "$need_update" == 'true' ]];then
 else
     if [[ "$quiet" == 'true' ]];then
         printf "No update needed.\n"
-        exit 0
+        exit $err_exited
     fi
     ask "You are running the latest version. Update anyway? ($running_kernel_version)" n && die $err_not_gonna_update
 fi
