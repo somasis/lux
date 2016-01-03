@@ -18,6 +18,11 @@
 # End of copyright.
 #
 
+strict_ifs()    { IFS=$'\n\t'; }
+unstrict_ifs()  { IFS=$' \n\t'; }
+set -euo pipefail
+strict_ifs
+
 # Don't mess with these variables, just use lux.conf(5).
 
 MAKEOPTS="-j$(( $(nproc 2>/dev/null || grep -c processor /proc/cpuinfo) + 2 ))"
@@ -60,7 +65,7 @@ default_kernel_patch() {
 }
 
 default_kernel_configure() {
-    if [[ -z "${skip_default_kernel_config_check}" && -f "${directory}/.config" ]];then
+    if [[ "${skip_default_kernel_config_check}" == 'false' && -f "${directory}/.config" ]];then
         if ask "Do you want to use the existing kernel config?" y;then
             debug "Since you have an existing kernel config, we'll use \`olddefconfig\`"
             if ask "Do you want to interactively configure new kernel options?" n;then
@@ -70,8 +75,8 @@ default_kernel_configure() {
             fi
         fi
     fi
-    if [[ -z "${skip_default_kernel_config_check}" ]];then
-        stderr "No .config exists in \"${directory}\".\n"
+    if [[ "${skip_default_kernel_config_check}" == 'false' ]];then
+        [[ -f "${directory}/.config" ]] || printf "No .config exists in \"${directory}\".\n" >&2
         if [[ ! -f /proc/config.gz && -f "${LIBDIR}"/modules/$(uname -r)/kernel/kernel/configs.ko ]];then
             debug "Attempting to load /proc/config.gz module. (configs.ko)"
             modprobe configs
@@ -85,13 +90,14 @@ default_kernel_configure() {
                 method=oldconfig
             fi
         else
-            stderr "Using default configuration.\n"
-            method=defconfig
+            printf "Using default configuration.\n" >&2
+            skip_default_kernel_config_check=true skip_default_kernel_config_ask=true default_kernel_configure "$@"
         fi
         skip_default_kernel_config_check=true default_kernel_configure "$@"
     elif [[ "$method" == "olddefconfig" ]];then
-        if ask "Do you want to configure the kernel?" n;then
-            method=olddefconfig
+        if [[ "${skip_default_kernel_config_ask}" == false ]] && ask "Do you want to configure the kernel?" n;then
+            [[ -f "${directory}"/.config ]] && method=olddefconfig
+            [[ -f "${directory}"/.config ]] || method=defconfig
         else
             if [[ "${preferred_config}" == nconfig ]];then
                 method=nconfig
@@ -104,16 +110,16 @@ default_kernel_configure() {
 }
 
 default_kernel_compile() {
-    make || error kernel_compilation_failed
+    make || die $err_kernel_compilation_failed
 }
 
 default_kernel_install() {
-    make modules_install || error kernel_modules_install_failed
+    make modules_install || die $err_kernel_modules_install_failed
     image="$directory/$(make image_name)"
     if type -fP kernel-install >/dev/null 2>&1 && ask "Do you want to use kernel-install (instead of make install)?" y;then
         kernel-install add "${target_version}" "$image" || die $err_kernel_failed_to_install
     else
-        make install || error kernel_failed_to_install
+        make install || die $err_kernel_failed_to_install
     fi
 }
 
@@ -156,24 +162,24 @@ get_target_version() {
 }
 
 git_pull() {
-    if [[ -z "${branch}" ]] || nonfatal git rev-parse --verify "${branch}" >/dev/null 2>&1;then
+    if git rev-parse --verify "${branch}" >/dev/null 2>&1 || [[ "${branch}" == 'auto' ]];then
         branch=$(git rev-parse --abbrev-ref HEAD)
     else
-        quiet_git branch "${branch}"
+        quiet_git branch "${branch}" || true
     fi
-    quiet_git reset --hard origin/"${branch}"
-    nonfatal quiet_git checkout -f HEAD || quiet_git reset --hard origin/"${branch}" # prevent merge conflicts
+    quiet_git reset --hard origin/"${branch}" >/dev/null 2>&1
+    quiet_git clean -fdxq -e '.config'
+    quiet_git checkout -f HEAD >/dev/null 2>&1 || quiet_git reset --hard origin/"${branch}" >/dev/null 2>&1 # prevent merge conflicts
+    quiet_git clean -fdxq -e '.config'
     # if we don't specify depth, `git` tries getting the whole tree!
-    nonfatal quiet_git pull -f "$(debug && echo -v)" --depth=1 origin "${branch}" || quiet_git reset --hard origin/"${branch}" # prevent merge conflicts
+    quiet_git pull -f "$(debug && echo -v)" --depth=1 origin "${branch}" || quiet_git reset --hard origin/"${branch}" >/dev/null 2>&1 # prevent merge conflicts
     quiet_git fetch -p
-    quiet_git reset --hard origin/"${branch}"
+    quiet_git reset --hard origin/"${branch}" >/dev/null 2>&1
 }
 
 get_makefile_ver() {
     make -s kernelversion 2>/dev/null
 }
-
-set -o pipefail
 
 me="${0##*/}"
 
@@ -216,19 +222,18 @@ install_log="${directory}/lux-install.log"
 post_install_log="${directory}/lux-post-install.log"
 
 debug() {
-    if [[ "$debug" ]];then
-        if [[ ! -z "$@" ]];then
-            stderr '%s: %s\n' "$me" "$@"
-        else
-            return 0
-        fi
-    else
+    local print="${@:-}"
+    if [[ "$debug" == "true" && -z "${print}" ]];then
+        return 0
+    elif [[ "${debug}" == "true" && ! -z "${print}" ]];then
+        printf "$@" >&2
+    elif [[ "${debug}" == "false" && -z "${print}" ]];then
         return 1
     fi
 }
 
 quiet() {
-    if [[ "$quiet" ]];then
+    if [[ "$quiet" == 'true' ]];then
         return 0
     else
         return 1
@@ -252,61 +257,46 @@ version() {
     exit 0
 }
 
-nonfatal() {
-    nonfatal=1
-    eval "$@"
-    nonfatal=
-}
-
-error() {
-    if [[ "$1" == "not_gonna_update" ]];then
-        exit "$err_not_gonna_update"
-    fi
-    local error_code=$(eval echo "\$err_$*")
-    [[ "$nonfatal" ]] || stderr "Exiting due to \"%s\" (error code: %s)\n" "$*" "$error_code"
-    [[ "$nonfatal" ]] || exit $error_code
+die() {
+    err_code=$1
+    printf "Exiting with error code %s\n" "$err_code" >&2
+    exit $err_code
 }
 
 invalid_arg() {
-    stderr "$me: invalid option -- '$*'\n"
-    error invalid_arg >/dev/null 2>&1
+    printf "%s: invalid option -- '%s'\n" "${me}" "$*" >&2
+    die $err_invalid_arg >/dev/null 2>&1
 }
 
 realpath() {
     printf '%s\n' "$(cd $(dirname $1); pwd)/$(basename $1)"
 }
 
-git() {
-    debug "executing \`git $*\`"
-    command -- git $@ || { debug "git exited with error code $?"; error git; }
-}
-
 quiet_git() {
+    unstrict_ifs
     local cmd="$1"
     shift
     local args="$@"
+    local err
 
-    if [[ "$debug" ]];then
-        eval "git $cmd $args"; return $?
+    if [[ "$debug" == 'true' ]];then
+        git $cmd $args; err=$?; strict_ifs; return $err
     fi
     case "$cmd" in
-        checkout|fetch)
+        pull|reset|checkout|fetch)
             args="$cmd $args -q"
-        ;;
-        pull|reset)
-            args="$cmd $args >/dev/null 2>&1"
         ;;
         *)
             args="$cmd $args"
         ;;
     esac
-    eval "git $args"; return $?
+    git $args; err=$?; strict_ifs; return $err
 }
 
 is_actually_kernel_repo() {
     # sanity checks to make sure this is actually a kernel git repo
     # kernel Makefile always has VERSION as first line
-    [[ ! -z "$fresh_tree" ]] && return 0
+    [[ "$fresh_tree" == 'true' ]] && return 0
 
     if [[ -f "${directory}/Makefile" ]] && head -1 "${directory}/Makefile" | grep -q '^VERSION';then
         return 0
@@ -315,18 +305,10 @@ is_actually_kernel_repo() {
     fi
 }
 
-make() {
-    debug "executing \`make LOCALVERSION= $MAKEOPTS $*\`"
-    command make LOCALVERSION= $MAKEOPTS $@
-    if [[ $? -ne 0 ]];then
-        debug "\`make $MAKEOPTS $@\` exited with error code $?"
-        return $?
-    fi
-}
-
 ask() {
     ask_text="$1"
-    if [[ "$2" == "y" || "$#" -lt 2 ]];then
+    ask_default="${2:-y}"
+    if [[ "$ask_default" == "y" ]];then
         _default='y'
         _default_text="Y/n"
     else
@@ -334,11 +316,11 @@ ask() {
         _default_text="y/N"
     fi
 
-    if [[ "$quiet" ]];then
+    if [[ "$quiet" == 'true' ]];then
         ask_reply="$_default"
     else
-        printf "%s [%s] " "$ask_text" "$_default_text"
-        read -n1 ask_reply; [[ "$ask_reply" ]] && printf '\n'
+        printf "%s [%s] " "$ask_text" "$_default_text" >&2
+        read -n1 ask_reply; [[ "$ask_reply" ]] && printf '\n' >&2
     fi
 
     ask_reply=$(echo "$ask_reply" | tr '[:upper:]' '[:lower:]')
@@ -364,18 +346,29 @@ stderr() {
 
 clean_up() {
     printf '\n'
-    error ctrl_c
+    die $err_ctrl_c
 }
 
-cp() {
-    if [[ "$debug" ]];then
-        command cp -v "$@" >&2
-    else
-        command cp "$@"
-    fi
+git() {
+    unstrict_ifs
+    command -- git $@
+    strict_ifs
 }
 
+make() {
+    unstrict_ifs
+    command -- make LOCALVERSION= $MAKEOPTS "$@"
+    strict_ifs
+}
 directory=$(realpath "$directory")
+
+method=none
+debug=false
+quiet=false
+only_install=false
+only_update=false
+fresh_tree=false
+skip_default_kernel_config_check=false
 
 while [[ $# -ne 0 ]];do
     arg="$1"
@@ -395,30 +388,22 @@ while [[ $# -ne 0 ]];do
             ;;
             d)
                 debug=true
-                [[ "$quiet" ]] && {
-                    stderr "Either -q or -d, not both please.\n"
-                    error only_one_action
-                }
             ;;
             q)
                 quiet=true
-                [[ "$debug" ]] && {
-                    stderr "Either -q or -d, not both please.\n"
-                    error only_one_action
-                }
             ;;
             i)
                 only_install=true
-                [[ "$only_update" ]] && {
-                    stderr "Either -u or -i, not both please.\n"
-                    error only_one_action
+                [[ "$only_update" == 'true' ]] && {
+                    printf "Either -u or -i, not both please.\n" >&2
+                    die $err_only_one_action
                 }
             ;;
             u)
                 only_update=true
-                [[ "$only_install" ]] && {
-                    stderr "Either -u or -i, not both please.\n"
-                    error only_one_action
+                [[ "$only_install" == 'true' ]] && {
+                    printf "Either -u or -i, not both please.\n" >&2
+                    die $err_only_one_action
                 }
             ;;
             f)
@@ -434,58 +419,67 @@ done
 
 trap 'clean_up' 2 3 15
 
-if [[ ! -d "$directory" && -z "$fresh_tree" ]];then
-    echo "If \"$directory\" needs to have a fresh kernel tree, run \`lux -f\`."
-    error nonexistant_dir
-elif [[ ! -w "$directory/Makefile" && -z "$fresh_tree" ]];then
-    error unwritable_dir
+if [[ ! -d "$directory" && "$fresh_tree" == 'false' ]];then
+    printf "If \"%s\" needs to have a fresh kernel tree, run \`%s -f\`." "$directory" "$me"
+    die $err_nonexistant_dir
+elif [[ ! -w "$directory/Makefile" && "$fresh_tree" == 'false' ]];then
+    die $err_unwritable_dir
 fi
 
-debug "\"$directory\", \"$branch\" branch"
+debug "\"$directory\", \"$branch\" branch\n"
 
 # begin update process
-debug "Changing to \"$directory\""
-if [[ ! -z "$fresh_tree" ]];then
+debug "Changing to \"$directory\"\n"
+if [[ "$fresh_tree" == true ]];then
     rm -rf "$directory" >/dev/null 2>&1
-    mkdir "$directory" >/dev/null 2>&1 || error unable_to_make_dir
+    mkdir "$directory" >/dev/null 2>&1 || die $err_unable_to_make_dir
 fi
-cd "$directory" || error cant_change_dir
+cd "$directory" || die $err_cant_change_dir
 
 # backup kernel configuration, if there is one
-if [[ -f .config && -z "$fresh_tree" ]];then
+if [[ -f .config && "$fresh_tree" == 'false' ]];then
     tmp_config_file=$(mktemp "${TMPDIR}/.lux-$$-configXXXXXX")
     cat ".config" > "$tmp_config_file"
-    debug "Made config backup at \"$tmp_config_file\""
+    debug "Made config backup at \"$tmp_config_file\"\n"
     has_existing_configuration=true
+else
+    has_existing_configuration=false
 fi
 
 # decide if we want to clone, or reset an existing repo
-if [[ ! -z "$fresh_tree" ]];then
+if [[ "$fresh_tree" == 'true' ]];then
     if ask "There doesn't appear to be a git repository here. Make a new one?"; then
         git clone --depth=1 "$kernel_repo" "${PWD}" # we could just use '.' but it looks funny seeing "Cloning into '.'..."
     else
-        error no_git_repo
+        die $err_no_git_repo
     fi
 fi
 
 git_dir="$PWD/$(git rev-parse --git-dir)"
 
-is_actually_kernel_repo || { stderr "This is not a kernel source tree.\n" &&
-error not_a_kernel_repo; }
+if ! is_actually_kernel_repo;then
+    printf "This is not a kernel source tree.\n" >&2
+    die $err_not_a_kernel_repo
+else
+    rm -f "${directory}"/.git/gc.log
+    quiet_git prune
+fi
 
-if [[ -z "$only_install" ]];then
-    debug "\$only_install is not set; updating kernel source tree."
+if [[ "$only_install" == 'false' ]];then
+    debug "\$only_install is not set; updating kernel source tree.\n"
 
     # checking for updates
     printf "Retrieving updates... "
     git_pull
 
     target_version=$(get_target_version)
-    debug "Target version: $target_version"
+    debug "Target version: $target_version\n"
+else
+    target_version=none
 fi
 
-if [[ "$only_update" ]];then
-    debug "\$only_update is set, not installing."
+if [[ "$only_update" == 'true' ]];then
+    debug "\$only_update is set, not installing.\n"
     if [[ "$target_version" == "$running_kernel_version" ]];then
         printf "no updates available.\n"
     else
@@ -494,26 +488,26 @@ if [[ "$only_update" ]];then
     exit 0
 fi
 
-[[ -z "$target_version" ]] && target_version=${running_kernel_version}
-debug "Installing kernel source tree."
+[[ "$target_version" == 'none' ]] && target_version=${running_kernel_version}
+debug "Installing kernel source tree.\n"
 
 # check if repository version is same as running
 if [[ "$running_kernel_version" == "$target_version" ]];then
-    need_update=
-    debug "You are currently running the same version as what is checked out right now. (running version $running_kernel_version)"
+    need_update=false
+    debug "You are currently running the same version as what is checked out right now. (running version $running_kernel_version)\n"
 else
     need_update=true
-    debug "You are not running the same as what is checked out right now. (running version $running_kernel_version)"
+    debug "You are not running the same as what is checked out right now. (running version $running_kernel_version)\n"
 fi
 
-if [[ "$need_update" ]];then
-    ask "Do you want to update your kernel? ($running_kernel_version --> $target_version)" || error not_gonna_update
-elif [[ -z "$need_update" ]];then
-    if [[ "$quiet" ]];then
+if [[ "$need_update" == 'true' ]];then
+    ask "Do you want to update your kernel? ($running_kernel_version --> $target_version)" || die $err_not_gonna_update
+else
+    if [[ "$quiet" == 'true' ]];then
         printf "No update needed.\n"
         exit 0
     fi
-    ask "You are running the latest version. Update anyway? ($running_kernel_version)" n && error not_gonna_update
+    ask "You are running the latest version. Update anyway? ($running_kernel_version)" n && die $err_not_gonna_update
 fi
 
 old_target=${target_version}
@@ -522,47 +516,45 @@ if [[ "${target_version}" == *.0 ]];then
     target_version=${target_version%.0}
 fi
 
-if [[ -z "${only_install}" ]];then
+if [[ "${only_install}" == 'false' ]];then
     quiet_git fetch --depth=1 origin "v${target_version}"
-    quiet_git reset --hard "FETCH_HEAD"
+    quiet_git reset --hard "FETCH_HEAD" >/dev/null 2>&1
 else
-    quiet_git reset --hard "v${target_version}"
+    quiet_git reset --hard "v${target_version}" >/dev/null 2>&1
 fi
 
-quiet_git clean -fdx
-
+quiet_git clean -fdx -e '.config'
 
 target_version=${old_target}
 
-make mrproper || error kernel_clean_failed
+make mrproper || die $err_kernel_clean_failed
 
-if [[ "$has_existing_configuration" ]];then
-    debug "Writing config from backup"
+if [[ "$has_existing_configuration" == "true" ]];then
+    debug "Writing config from backup\n"
     cat "$tmp_config_file" > ".config"
 fi
 
 touch "$prepare_log" "$patch_log" "$compile_log" "$install_log" "$post_install_log" >/dev/null 2>&1
+[[ ! -w "$prepare_log" ]]       && prepare_log="/dev/null"
+[[ ! -w "$patch_log" ]]         && patch_log="/dev/null"
+[[ ! -w "$compile_log" ]]       && compile_log="/dev/null"
+[[ ! -w "$install_log" ]]       && install_log="/dev/null"
+[[ ! -w "$post_install_log" ]]  && post_install_log="/dev/null"
 
-[[ ! -w "$prepare_log"   ]] && prepare_log="/dev/null"
-[[ ! -w "$patch_log"   ]] && patch_log="/dev/null"
-[[ ! -w "$compile_log" ]] && compile_log="/dev/null"
-[[ ! -w "$install_log" ]] && install_log="/dev/null"
-[[ ! -w "$post_install_log" ]] && post_install_log="/dev/null"
-
-debug "Running \`kernel_prepare\`; logging to \"$prepare_log\""
+debug "Running \`kernel_prepare\`; logging to \"${prepare_log}\"\n"
 kernel_prepare 2>&1 | tee -a "$prepare_log"
 
-debug "Running \`kernel_patch\`; logging to \"$patch_log\""
+debug "Running \`kernel_patch\`; logging to \"${patch_log}\"\n"
 kernel_patch 2>&1 | tee -a "$patch_log"
 
-debug "Running \`kernel_configure\`; we can't log this due to complications involving menuconfig/nconfig"
+debug "Running \`kernel_configure\`; we can't log this due to complications involving menuconfig/nconfig\n"
 kernel_configure
 
-debug "Running \`kernel_compile\`; logging to \"$compile_log\""
+debug "Running \`kernel_compile\`; logging to \"${compile_log}\"\n"
 kernel_compile 2>&1 | tee -a "$compile_log"
 
-debug "Running \`kernel_install\`; logging to \"$install_log\""
+debug "Running \`kernel_install\`; logging to \"${install_log}\"\n"
 kernel_install 2>&1 | tee -a "$install_log"
 
-debug "Running \`kernel_post_install\`; logging to \"$post_install_log\""
+debug "Running \`kernel_post_install\`; logging to \"${post_install_log}\"\n"
 kernel_post_install 2>&1 | tee -a "$post_install_log"
