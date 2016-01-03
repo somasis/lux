@@ -111,7 +111,7 @@ default_kernel_install() {
     make modules_install || error kernel_modules_install_failed
     image="$directory/$(make image_name)"
     if type -fP kernel-install >/dev/null 2>&1 && ask "Do you want to use kernel-install (instead of make install)?" y;then
-        kernel-install add "${target_version#v}" "$image" || error kernel_failed_to_install
+        kernel-install add "${target_version}" "$image" || die $err_kernel_failed_to_install
     else
         make install || error kernel_failed_to_install
     fi
@@ -138,14 +138,9 @@ get_target_version() {
             else
                 _target_version=${target##tag:}
             fi
-            while [[ ${_target_version:0:1} == v ]];do
-                _target_version=${_target_version:1}
-            done
             if [[ "${_target_version}" == [0-9].[0-9] ]];then
                 _target_version=${_target_version}.0
             fi
-            _target_version=v${_target_version}
-            displayed_target_version=${_target_version}
         ;;
         *)
             _target_version=${target}
@@ -153,8 +148,10 @@ get_target_version() {
             displayed_target_version=$(get_makefile_ver)
         ;;
     esac
-    debug "Displayed target version: ${displayed_target_version}"
-    debug "Actual target version: ${_target_version}"
+    _target_version=${_target_version#v}
+    displayed_target_version=${displayed_target_version:-$_target_version}
+    debug "Displayed target version: ${displayed_target_version}\n"
+    debug "Actual target version: ${_target_version}\n"
     echo "$_target_version"
 }
 
@@ -201,7 +198,7 @@ err_kernel_modules_install_failed=66
 err_kernel_failed_to_install=67
 err_ctrl_c=127
 
-running_kernel_version=v$(uname -r | sed 's#-.*##;s#[^0-9.]##g')
+running_kernel_version=$(uname -r | sed 's#-.*##;s#[^0-9.]##g')
 
 # reset the environment a little so commands are more predictable
 export GREP_OPTIONS= LC_ALL=C
@@ -526,10 +523,10 @@ if [[ "${target_version}" == *.0 ]];then
 fi
 
 if [[ -z "${only_install}" ]];then
-    quiet_git fetch --depth=1 origin "${target_version}"
+    quiet_git fetch --depth=1 origin "v${target_version}"
     quiet_git reset --hard "FETCH_HEAD"
 else
-    quiet_git reset --hard "${target_version}"
+    quiet_git reset --hard "v${target_version}"
 fi
 
 quiet_git clean -fdx
