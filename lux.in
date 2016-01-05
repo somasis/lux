@@ -116,23 +116,23 @@ default_kernel_configure() {
         d) method=defconfig ;;
         p)
             method=olddefconfig
-            default_kernel_configure_load_running_config || die $err_unable_to_load_running_config
+            default_kernel_configure_load_running_config || die $err_unable_to_load_running_config "Failed to load running configuration, which was specifically requested"
         ;;
         m)
             if [[ ! -f ${directory}/.config ]] && ! default_kernel_configure_load_running_config;then
                 method=defconfig
-                make $method || die $err_kernel_configuration_failed
+                make $method || die $err_kernel_configuration_failed "Failed to create default configuration"
             fi
             method=${preferred_config}
         ;;
         n)
             method=defconfig
-            make $method || die $err_kernel_configuration_failed
+            make $method || die $err_kernel_configuration_failed "Failed to create default configuration"
             method=${preferred_config}
         ;;
         o)
             if ! default_kernel_configure_load_running_config;then
-                die $err_unable_to_load_running_config
+                die $err_unable_to_load_running_config "Failed to load running configuration, which was specifically requested"
             else
                 method=${preferred_config}
             fi
@@ -146,34 +146,34 @@ default_kernel_configure() {
                 if ! default_kernel_configure_load_running_config;then
                     printf "Using default configuration\n" >&2
                     method=defconfig
-                    make $method || die $err_kernel_configuration_failed
+                    make $method || die $err_kernel_configuration_failed "Failed to create default configuration"
                     method=oldconfig
                 fi
             fi
         ;;
         u)
             method=oldconfig
-            default_kernel_configure_load_running_config || die $err_unable_to_load_running_config
+            default_kernel_configure_load_running_config || die $err_unable_to_load_running_config "Failed to load running configuration, which was specifically requested"
         ;;
-        q) exit $err_exited ;;
+        q) exit 0 ;;
         ?)
             default_kernel_configure; return $?
         ;;
     esac
-    make $method || die $err_kernel_configuration_failed
+    make $method || die $err_kernel_configuration_failed "\`make ${method}\` exited with a non-zero error code"
 }
 
 default_kernel_compile() {
-    make || die $err_kernel_compilation_failed
+    make || die $err_kernel_compilation_failed "\`make\` exited with a non-zero error code"
 }
 
 default_kernel_install() {
-    make modules_install || die $err_kernel_modules_install_failed
+    make modules_install || die $err_kernel_modules_install_failed "\`make modules_install\` exited with a non-zero error code"
     image="$directory/$(make image_name)"
     if type -fP kernel-install >/dev/null 2>&1 && ask "Do you want to use kernel-install (instead of make install)?" y;then
-        kernel-install add "${target_version}" "$image" || die $err_kernel_failed_to_install
+        kernel-install add "${target_version}" "$image" || die $err_kernel_failed_to_install "\`kernel-install\` exited with a non-zero error code"
     else
-        make install || die $err_kernel_failed_to_install
+        make install || die $err_kernel_failed_to_install "\`make install\` exited with a non-zero error code"
     fi
 }
 
@@ -307,14 +307,16 @@ version() {
 }
 
 die() {
-    err_code=$1
-    printf "Exiting with error code %s\n" "$err_code" >&2
+    local err_code="$1";shift
+    local err_msg="${@:-}"
+    if [[ -n "${err_msg}" ]];then
+        printf "%s: %s\n" "${me}" "${err_msg}" >&2
+    fi
     exit $err_code
 }
 
 invalid_arg() {
-    printf "%s: invalid option -- '%s'\n" "${me}" "$*" >&2
-    die $err_invalid_arg >/dev/null 2>&1
+    die $err_invalid_arg "Invalid option -- $*"
 }
 
 realpath() {
@@ -417,7 +419,7 @@ multiple_ask() {
 
 clean_up() {
     printf '\n'
-    die $err_ctrl_c
+    die 1 "Exiting due to keyboard interrupt"
 }
 
 git() {
@@ -465,15 +467,13 @@ while [[ $# -ne 0 ]];do
             i)
                 only_install=true
                 [[ "$only_update" == 'true' ]] && {
-                    printf "Either -u or -i, not both please.\n" >&2
-                    die $err_only_one_action
+                    die $err_conflicting_modes "Either -u or -i, not both please."
                 }
             ;;
             u)
                 only_update=true
                 [[ "$only_install" == 'true' ]] && {
-                    printf "Either -u or -i, not both please.\n" >&2
-                    die $err_only_one_action
+                    die $err_only_one_action "Either -u or -i, not both please."
                 }
             ;;
             f)
@@ -490,10 +490,9 @@ done
 trap 'clean_up' 2 3 15
 
 if [[ ! -d "$directory" && "$fresh_tree" == 'false' ]];then
-    printf "If \"%s\" needs to have a fresh kernel tree, run \`%s -f\`." "$directory" "$me"
-    die $err_nonexistant_dir
-elif [[ ! -w "$directory/Makefile" && "$fresh_tree" == 'false' ]];then
-    die $err_unwritable_dir
+    die $err_nonexistant_dir "If \"${directory}\" needs to have a fresh kernel tree, run \`${me} -f\`."
+elif [[ ! -w "$directory" && "$fresh_tree" == 'false' ]];then
+    die $err_unwritable_dir "Cannot write to \"${directory}\""
 fi
 
 debug "\"$directory\", \"$branch\" branch\n"
@@ -502,9 +501,9 @@ debug "\"$directory\", \"$branch\" branch\n"
 debug "Changing to \"$directory\"\n"
 if [[ "$fresh_tree" == true ]];then
     rm -rf "$directory" >/dev/null 2>&1
-    mkdir "$directory" >/dev/null 2>&1 || die $err_unable_to_make_dir
+    mkdir "$directory" >/dev/null 2>&1 || die $err_unable_to_make_dir "Unable to create \"${directory}\"."
 fi
-cd "$directory" || die $err_cant_change_dir
+cd "$directory" || die $err_cant_change_dir "Can't enter \"${directory}\"."
 
 # backup kernel configuration, if there is one
 if [[ -f .config && "$fresh_tree" == 'false' ]];then
@@ -521,15 +520,14 @@ if [[ "$fresh_tree" == 'true' ]];then
     if ask "There doesn't appear to be a git repository here. Make a new one?"; then
         git clone --depth=1 "$kernel_repo" "${PWD}" # we could just use '.' but it looks funny seeing "Cloning into '.'..."
     else
-        die $err_no_git_repo
+        die $err_no_git_repo "No git repository available to use"
     fi
 fi
 
 git_dir="$PWD/$(git rev-parse --git-dir)"
 
 if ! is_actually_kernel_repo;then
-    printf "This is not a kernel source tree.\n" >&2
-    die $err_not_a_kernel_repo
+    die $err_not_a_kernel_repo "This is not a kernel source tree."
 else
     rm -f "${directory}"/.git/gc.log
     quiet_git prune
@@ -597,7 +595,7 @@ quiet_git clean -fdx -e '.config'
 
 target_version=${old_target}
 
-make mrproper || die $err_kernel_clean_failed
+make mrproper || die $err_kernel_clean_failed "\`make mrproper\` exited with error code $?"
 
 if [[ "$has_existing_configuration" == "true" ]];then
     debug "Writing config from backup\n"
