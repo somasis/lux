@@ -261,7 +261,7 @@ running_kernel_version=$(uname -r | sed 's#-.*##;s#[^0-9.]##g')
 export GREP_OPTIONS="" LC_ALL=C
 TMPDIR=${TMPDIR:-/tmp}
 LIBDIR="@@libdir@@"
-config="/etc/lux.conf"
+config="@@sysconfdir@@/lux.conf"
 
 [[ -f "${config}" ]] && . "${config}"
 
