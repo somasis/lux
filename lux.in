@@ -69,10 +69,12 @@ default_kernel_configure_print_choices() {
     printf '    %s - %s\n'    \
         e "Use existing configuration, if it exists; else, use running config, using default on error" \
         d "Use default configuration" \
-        p "Use running configuration (requires /proc/config.gz)" \
+        p "Use running configuration" \
         m "Manually configure kernel with ${preferred_config}, basing on existing, running, or default config" \
         n "Manually configure kernel with ${preferred_config}, basing on default config" \
-        o "Manually configure kernel with ${preferred_config}, basing on running config (requires /proc/config.gz)" \
+        o "Manually configure kernel with ${preferred_config}, basing on running config" \
+        i "Interactively configure new options, using existing configuration, running, or default config" \
+        u "Interactively configure new options, using running configuration" \
         q "Exit ${me}"
 }
 
@@ -97,7 +99,7 @@ default_kernel_configure() {
     if [[ "${quiet}" == 'false' ]];then
         default_kernel_configure_print_choices
     fi
-    method=$(multiple_ask "How do you want to configure the kernel?" e d p m n o q ?)
+    method=$(multiple_ask "How do you want to configure the kernel?" e d p m n o i u q ?)
     case "${method,,}" in
         e)
             if [[ -r ${directory}/.config ]];then
@@ -134,6 +136,24 @@ default_kernel_configure() {
             else
                 method=${preferred_config}
             fi
+        ;;
+        i)
+            if [[ -r ${directory}/.config ]];then
+                debug "Using existing configuration\n"
+                method=oldconfig
+            else
+                method=oldconfig
+                if ! default_kernel_configure_load_running_config;then
+                    printf "Using default configuration\n" >&2
+                    method=defconfig
+                    make $method || die $err_kernel_configuration_failed
+                    method=oldconfig
+                fi
+            fi
+        ;;
+        u)
+            method=oldconfig
+            default_kernel_configure_load_running_config || die $err_unable_to_load_running_config
         ;;
         q) exit $err_exited ;;
         ?)
