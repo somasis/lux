@@ -237,7 +237,6 @@ get_makefile_ver() {
 
 me="${0##*/}"
 
-err_exited=0
 err_invalid_arg=1
 err_nonexistant_dir=2
 err_no_git_repo=4
@@ -253,7 +252,6 @@ err_kernel_compilation_failed=65
 err_kernel_modules_install_failed=66
 err_kernel_failed_to_install=67
 err_unable_to_load_running_config=80
-err_ctrl_c=127
 
 running_kernel_version=$(uname -r | sed 's#-.*##;s#[^0-9.]##g')
 
@@ -293,7 +291,7 @@ quiet() {
 
 usage() {
     echo "usage: ${me} [-dfiquvh] [directory]"
-    exit $err_exited
+    exit 0
 }
 
 version() {
@@ -305,7 +303,7 @@ version() {
             printf '%s\n' "$copyright_line"
         fi
     done
-    exit $err_exited
+    exit 0
 }
 
 die() {
@@ -557,7 +555,7 @@ if [[ "$only_update" == 'true' ]];then
     else
         printf "version %s available\n" "${target_version}"
     fi
-    exit $err_exited
+    exit 0
 fi
 
 [[ "$target_version" == 'none' ]] && target_version=${running_kernel_version}
@@ -577,7 +575,7 @@ if [[ "$need_update" == 'true' ]];then
 else
     if [[ "$quiet" == 'true' ]];then
         printf "No update needed.\n"
-        exit $err_exited
+        exit 0
     fi
     ask "You are running the latest version. Update anyway? ($running_kernel_version)" n && die $err_not_gonna_update
 fi
