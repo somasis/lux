@@ -96,7 +96,7 @@ Written by Kylie McClain <somasis@exherbo.org>
 
 Licensed under the ISC license.
 
-Copyright (c) 2014-2015 Kylie McClain <<somasis@exherbo.org>>
+Copyright (c) 2014-2016 Kylie McClain <<somasis@exherbo.org>>
 
 Permission to use, copy, modify, and/or distribute this software for any
 purpose with or without fee is hereby granted, provided that the above
