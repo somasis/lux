@@ -4,6 +4,8 @@ VERSION	=0.6.0
 MANS	=lux.conf.5 lux.8
 
 DESTDIR			?=$(PWD)/image
+BUILD			?=$(PWD)/build
+
 prefix			?=/usr/local
 exec_prefix		?=$(prefix)
 bindir			?=$(exec_prefix)/bin
@@ -24,6 +26,7 @@ all:
 	@printf "lux $(VERSION), a Linux kernel updater\n\n"
 	@printf "%-20s%-20s\n"	\
 		"DESTDIR"		"$(DESTDIR)"		\
+		"BUILD"			"$(BUILD)"			\
 		"bindir"		"$(bindir)"			\
 		"libdir"		"$(libdir)"			\
 		"libexecdir"	"$(libexecdir)"		\
@@ -37,8 +40,11 @@ all:
 		""
 	@$(MAKE) --no-print-directory $(NAME) $(MANS)
 
+$(BUILD):
+	@[[ -d "$(BUILD)" ]] || mkdir -p "$(BUILD)"
+
 clean:
-	rm -f $(NAME) $(MANS)
+	rm -rf $(BUILD)
 
 $(NAME):	$(NAME).in
 	sed \
@@ -55,14 +61,23 @@ $(NAME):	$(NAME).in
 		-e "s|@@localstatedir@@|$(localstatedir)|g"	\
 		-e "s|@@runstatedir@@|$(runstatedir)|g"		\
 		-e "s|@@VERSION@@|$(VERSION)|g"				\
-		$(NAME).in > $(NAME)
-	chmod +x $(NAME)
+		$(NAME).in > $(BUILD)/$(NAME)
+	chmod +x $(BUILD)/$(NAME)
+	@echo
+	@for file in $$(grep -lr '^\#!/bin/bash' $(BUILD));do \
+		bash -n "$$file"; \
+		if [[ $$? -eq 0 ]];then \
+			echo "SYNTAX PASS: $$file"; \
+		else \
+			echo "SYNTAX FAIL: $$file" || exit 1; \
+		fi; \
+	done
 
 %.5:	%.5.ronn
-	ronn --pipe --roff --organization="$(NAME) $(VERSION)" --manual="File Formats Manual" $< > $@
+	ronn --pipe --roff --organization="$(NAME) $(VERSION)" --manual="File Formats Manual" $< > $(BUILD)/$@
 
 %.8:	%.8.ronn
-	ronn --pipe --roff --organization="$(NAME) $(VERSION)" --manual="System Manager's Manual" $< > $@
+	ronn --pipe --roff --organization="$(NAME) $(VERSION)" --manual="System Manager's Manual" $< > $(BUILD)/$@
 
 install:	doc $(NAME) $(MANS)
 	mkdir -p $(DESTDIR)$(bindir)
@@ -70,9 +85,9 @@ install:	doc $(NAME) $(MANS)
 	mkdir -p $(DESTDIR)$(man5dir)
 	mkdir -p $(DESTDIR)$(man8dir)
 	mkdir -p $(DESTDIR)$(sysconfdir)
-	install -m755 $(NAME) $(DESTDIR)$(bindir)/$(NAME)
-	install -m644 lux.conf.5 $(DESTDIR)$(man5dir)/lux.conf.5
-	install -m644 lux.8 $(DESTDIR)$(man8dir)/lux.8
+	install -m755 $(BUILD)/$(NAME) $(DESTDIR)$(bindir)/$(NAME)
+	install -m644 $(BUILD)/lux.conf.5 $(DESTDIR)$(man5dir)/lux.conf.5
+	install -m644 $(BUILD)/lux.8 $(DESTDIR)$(man8dir)/lux.8
 	install -m644 lux.conf $(DESTDIR)$(sysconfdir)/lux.conf
 	install -m644 doc/* $(DESTDIR)$(docdir)
 
