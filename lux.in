@@ -424,7 +424,7 @@ clean_up() {
 
 git() {
     unstrict_ifs
-    command -- git $@
+    command -- git "$@"
     strict_ifs
 }
 
