@@ -529,7 +529,7 @@ git_dir="$PWD/$(git rev-parse --git-dir)"
 if ! is_actually_kernel_repo;then
     die $err_not_a_kernel_repo "This is not a kernel source tree."
 else
-    rm -f "${directory}"/.git/gc.log
+    rm -f "${git_dir}"/gc.log
     quiet_git prune
 fi
 
