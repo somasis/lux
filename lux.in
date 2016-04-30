@@ -526,6 +526,10 @@ fi
 
 git_dir="$PWD/$(git rev-parse --git-dir)"
 
+if [[ -z "$(git config user.name 2>/dev/null)" || -z "$(git config user.email 2>/dev/null)" ]];then
+    git config user.name "lux Kernel Updater"
+    git config user.email "lux@${HOSTNAME}"
+fi
 if ! is_actually_kernel_repo;then
     die $err_not_a_kernel_repo "This is not a kernel source tree."
 else
