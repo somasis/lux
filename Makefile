@@ -1,5 +1,5 @@
 NAME	=lux
-VERSION	=0.7.0
+VERSION	=0.7.1
 
 MANS	=lux.conf.5 lux.8
 
@@ -21,7 +21,7 @@ man8dir			?=$(mandir)/man8
 localstatedir	?=$(prefix)/var
 runstatedir		?=$(localstatedir)/run
 
-DIST_FILES  =CONTRIBUTING.md LICENSE Makefile README.md doc/ $(wildcard *.ronn) $(wildcard *.in) $(MANS)
+DIST_FILES  =CONTRIBUTING.md LICENSE Makefile README.md doc/ $(wildcard *.conf) $(wildcard *.ronn) $(wildcard *.in) $(MANS)
 
 all:
 	@printf "lux $(VERSION), a Linux kernel updater\n\n"
