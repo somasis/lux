@@ -1,5 +1,7 @@
 build/
 image/
 lux-*/
+*.5
+*.8
 *.tar
 *.tar.xz
