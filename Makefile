@@ -21,6 +21,8 @@ man8dir			?=$(mandir)/man8
 localstatedir	?=$(prefix)/var
 runstatedir		?=$(localstatedir)/run
 
+DIST_FILES  =CONTRIBUTING.md LICENSE Makefile README.md doc/ $(wildcard *.ronn) $(wildcard *.in) $(MANS)
+
 all:
 	@printf "lux $(VERSION), a Linux kernel updater\n\n"
 	@printf "%-20s%-20s\n"	\
@@ -39,7 +41,7 @@ all:
 	@$(MAKE) --no-print-directory $(NAME) $(MANS)
 
 clean:
-	rm -rf $(MANS) $(NAME)
+	rm -rf $(MANS) $(NAME) $(NAME)-$(VERSION)/ $(NAME)-$(VERSION).tar*
 
 $(NAME):	$(NAME).in
 	sed \
@@ -74,6 +76,17 @@ $(NAME):	$(NAME).in
 %.8:	%.8.ronn
 	ronn --pipe --roff --organization="$(NAME) $(VERSION)" --manual="System Manager's Manual" $< > $@
 
+$(NAME)-$(VERSION).tar: $(DIST_FILES)
+	mkdir -p $(NAME)-$(VERSION)
+	cp -r $(DIST_FILES) $(NAME)-$(VERSION)/
+	tar cf $(NAME)-$(VERSION).tar $(NAME)-$(VERSION)/
+	rm -r $(NAME)-$(VERSION)
+
+$(NAME)-$(VERSION).tar.xz: $(NAME)-$(VERSION).tar
+	xz -f -k -e $(NAME)-$(VERSION).tar
+
+dist: $(NAME)-$(VERSION).tar.xz
+
 install:	doc $(NAME) $(MANS)
 	mkdir -p $(DESTDIR)$(bindir)
 	mkdir -p $(DESTDIR)$(docdir)
@@ -86,4 +99,4 @@ install:	doc $(NAME) $(MANS)
 	install -m644 lux.conf $(DESTDIR)$(sysconfdir)/lux.conf
 	install -m644 doc/* $(DESTDIR)$(docdir)
 
-.PHONY:	all clean install
+.PHONY:	all clean install dist
