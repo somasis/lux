@@ -346,10 +346,10 @@ quiet_git() {
 
 is_actually_kernel_repo() {
     # sanity checks to make sure this is actually a kernel git repo
-    # kernel Makefile always has VERSION as first line
+    # the first line of the kernel's README is "Linux kernel"
     [[ "$fresh_tree" == 'true' ]] && return 0
 
-    if [[ -f "${directory}/Makefile" ]] && head -1 "${directory}/Makefile" | grep -q '^VERSION';then
+    if [[ -f "${directory}/README" ]] && head -1 "${directory}/README" | grep -q 'Linux kernel';then
         return 0
     else
         return 1
